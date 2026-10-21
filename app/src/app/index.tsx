@@ -38,7 +38,7 @@ export default function HomeScreen() {
             Слава Україні
           </ThemedText>
         </ThemedView>
-        <Text>
+        <Text className={"text-4xl font-bold text-blue-500 text-center"}>
           Hello
         </Text>
         <ThemedText type="code" style={styles.code}>
