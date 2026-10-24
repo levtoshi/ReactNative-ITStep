@@ -1,6 +1,13 @@
+using Microsoft.EntityFrameworkCore;
+using WebAPISalo.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+
+string conStr = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<MyDbContext>(opt =>
+    opt.UseNpgsql(conStr));
 
 builder.Services.AddControllers();
 
