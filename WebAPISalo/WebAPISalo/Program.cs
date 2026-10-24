@@ -58,13 +58,11 @@ static async Task SeedIdentityAsync(WebApplication app)
     {
         foreach (var roleName in Roles.AllRoles)
         {
-            if (!await roleManager.RoleExistsAsync(roleName))
-            {
-                var result = await roleManager.CreateAsync(new RoleEntity { Name = roleName });
-                if (!result.Succeeded)
-                    Console.WriteLine($"Не вдалося створити роль '{roleName}': " +
-                        string.Join("; ", result.Errors.Select(e => e.Description)));
-            }
+            var result = await roleManager.CreateAsync(new RoleEntity { Name = roleName });
+            if (!result.Succeeded)
+                Console.WriteLine($"Не вдалося створити роль '{roleName}': " +
+                    string.Join("; ", result.Errors.Select(e => e.Description)));
+
         }
     }
 
