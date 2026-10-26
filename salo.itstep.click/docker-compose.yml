@@ -1,0 +1,63 @@
+version: "3.9"
+
+networks:
+  saloNet:
+    driver: bridge
+
+services:
+  postgresSaloServerDb:
+    image: postgres:18.1
+    container_name: salopostgres_db
+    ports:
+      - "5212:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ${VOLUME_POSTGRES}
+    networks:
+      - saloNet
+    restart: unless-stopped
+    
+  api:
+    #build: ./WebApiTransfer
+    image: novakvova/salo-api:latest
+    container_name: salo-api
+    volumes:
+      - ${VOLUME_SERVERAPI}
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: Host=postgresSaloServerDb;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+    ports:
+      - "8254:8080"
+    depends_on:
+      - postgresSaloServerDb
+    networks:
+      - saloNet
+    restart: unless-stopped
+    
+  db-backup:
+    image: postgres:18.1
+    container_name: salo-db-backup
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    networks:
+      - saloNet
+    depends_on:
+      - postgresSaloServerDb
+    entrypoint: >
+      sh -c "
+        while true; do
+          TIMESTAMP=$$(date +'%Y%m%d%H%M%S');
+      
+          pg_dump -h postgresSaloServerDb -U $${POSTGRES_USER} -d $${POSTGRES_DB} --format=custom --blobs --verbose --file=/backups/db_$${TIMESTAMP}.backup;
+      
+          sleep 86400;
+        done
+      "
+    restart: unless-stopped
