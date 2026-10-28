@@ -8,13 +8,41 @@ import {
     KeyboardAvoidingView,
     Platform,
     Keyboard,
-    TouchableWithoutFeedback,
+    TouchableWithoutFeedback, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {Redirect, router} from "expo-router";
+import {ILoginType} from "@/types/auth/ILoginType";
+import {Controller, useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
+import {LoginSchema} from "@/schemas/LoginSchema";
+import {onSubmit} from "@expo/ui/swift-ui/modifiers";
 
 const LoginScreen = () => {
     const passwordRef = useRef(null);
+
+    const defaultValue: ILoginType = {
+        email: "",
+        password: "",
+    }
+
+    const {
+        control,
+        handleSubmit,
+        formState: { errors },
+    } = useForm<ILoginType>({
+        resolver: zodResolver(LoginSchema),
+        defaultValues: defaultValue
+    });
+
+    const url = "https://salo.itstep.click/api/Account/Login";
+    const myOnSubmit = async (data: ILoginType) => {
+
+
+
+        console.log("Submit data ", data);
+    }
+
 
     return (
         <>
@@ -40,44 +68,70 @@ const LoginScreen = () => {
                                 <Text className="mb-8 text-center text-base text-slate-500">
                                     Увійдіть у свій акаунт
                                 </Text>
+                                <View className="mb-5">
+                                    <Text className="mb-2 text-sm font-medium text-slate-700">
+                                        Електронна пошта
+                                    </Text>
 
-                                <Text className="mb-2 text-sm font-medium text-slate-700">
-                                    Електронна пошта
-                                </Text>
-                                <TextInput
-                                    className="mb-5 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white"
-                                    placeholder="example@mail.com"
-                                    placeholderTextColor="#94a3b8"
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                    autoComplete="email"
-                                    textContentType="emailAddress"
-                                    returnKeyType="next"
-                                />
+                                    <Controller
+                                        control={control}
+                                        name="email"
+                                        render={({field: {onChange, onBlur, value}}) => (
+                                            <TextInput
+                                                className="mb-2 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white"
+                                                value={value}
+                                                onChangeText={onChange}
+                                                onBlur={onBlur}
+                                                placeholderTextColor="#94a3b8"
+                                                keyboardType="email-address"
+                                                autoCapitalize="none"
+                                            />
+                                        )}
+                                    />
 
-                                <Text className="mb-2 text-sm font-medium text-slate-700">
-                                    Пароль
-                                </Text>
-                                <TextInput
-                                    ref={passwordRef}
-                                    className="mb-8 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white"
-                                    placeholder="••••••••"
-                                    placeholderTextColor="#94a3b8"
-                                    secureTextEntry
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                    autoComplete="password"
-                                    textContentType="password"
-                                    returnKeyType="done"
-                                    onSubmitEditing={Keyboard.dismiss}
-                                />
+                                    {errors.email && (
+                                        <Text className="mt-1 text-xs text-red-500">{errors.email.message}</Text>
+                                    )}
+                                </View>
 
-                                <TouchableOpacity className="h-14 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700">
+                                <View className="mb-5">
+                                    <Text className="mb-2 text-sm font-medium text-slate-700">
+                                        Пароль
+                                    </Text>
+
+                                    <Controller
+                                        control={control}
+                                        name="password"
+                                        render={({field: {onChange, onBlur, value}}) => (
+                                            <TextInput
+                                                ref={passwordRef}
+                                                value={value}
+                                                onBlur={onBlur}
+                                                onChangeText={onChange}
+                                                className="mb-2 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white"
+                                                placeholder="••••••••"
+                                                placeholderTextColor="#94a3b8"
+                                                secureTextEntry
+                                                autoCapitalize="none"
+                                            />
+                                        )}
+                                    />
+
+                                    {errors.password && (
+                                        <Text className="mt-1 text-xs text-red-500">{errors.password.message}</Text>
+                                    )}
+                                </View>
+
+
+                                <Pressable
+                                    onPress={handleSubmit(myOnSubmit)}
+                                    className="h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700"
+
+                                >
                                     <Text className="text-base font-semibold text-white">
                                         Увійти
                                     </Text>
-                                </TouchableOpacity>
+                                </Pressable>
 
                                 <TouchableOpacity
                                     onPress={() => router.replace("/register")}
