@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using WebAPISalo.Constants;
 using WebAPISalo.Data.Identity;
 using WebAPISalo.Models.Account;
 
@@ -29,5 +30,31 @@ public class AccountController(UserManager<UserEntity> userManager)
             }
         }
         return Unauthorized(new { error="Дані вказано не вірно!" });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Register([FromBody] RegisterModel model)
+    {
+        var user = new UserEntity
+        {
+            FirstName = model.FirstName,
+            LastName = model.LastName,
+            UserName = model.Email,
+            Email = model.Email,
+            EmailConfirmed = true
+        };
+
+        var createResult = await userManager.CreateAsync(user, model.Password);
+        if (!createResult.Succeeded)
+            return BadRequest(new
+            {
+                erroor = $"Не вдалося створити користувача '{model.Email}': " +
+                string.Join("; ", createResult.Errors.Select(e => e.Description))
+            });
+
+        var roleResult = await userManager.AddToRoleAsync(user, Roles.User);
+
+        return Ok(new { Token = "Тут буде токен авторизації на сервері" });
+
     }
 }

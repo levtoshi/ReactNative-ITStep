@@ -11,12 +11,12 @@ import {
     TouchableWithoutFeedback, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {Redirect, router} from "expo-router";
+import {router} from "expo-router";
 import {ILoginType} from "@/types/auth/ILoginType";
 import {Controller, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {LoginSchema} from "@/schemas/LoginSchema";
-import {onSubmit} from "@expo/ui/swift-ui/modifiers";
+import axios from "axios";
 
 const LoginScreen = () => {
     const passwordRef = useRef(null);
@@ -38,7 +38,14 @@ const LoginScreen = () => {
     const url = "https://salo.itstep.click/api/Account/Login";
     const myOnSubmit = async (data: ILoginType) => {
 
-
+        try {
+            const result = await axios.post(url, data);
+            console.log("Усіх status", result.status);
+            console.log("Усіх data", result.data);
+        }
+        catch (error) {
+            console.log("Помилка", error);
+        }
 
         console.log("Submit data ", data);
     }
