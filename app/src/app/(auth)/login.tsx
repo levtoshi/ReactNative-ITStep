@@ -85,7 +85,11 @@ const LoginScreen = () => {
                                         name="email"
                                         render={({field: {onChange, onBlur, value}}) => (
                                             <TextInput
-                                                className="mb-2 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white"
+                                                className={`mb-2 h-14 w-full rounded-xl border px-4 text-base text-slate-900 ${
+                                                    errors.email
+                                                        ? "border-red-500 bg-red-50"
+                                                        : "border-slate-300 bg-slate-50 focus:border-indigo-500 focus:bg-white"
+                                                }`}
                                                 value={value}
                                                 onChangeText={onChange}
                                                 onBlur={onBlur}
@@ -115,7 +119,11 @@ const LoginScreen = () => {
                                                 value={value}
                                                 onBlur={onBlur}
                                                 onChangeText={onChange}
-                                                className="mb-2 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white"
+                                                className={`mb-2 h-14 w-full rounded-xl border px-4 text-base text-slate-900 ${
+                                                    errors.password
+                                                        ? "border-red-500 bg-red-50"
+                                                        : "border-slate-300 bg-slate-50 focus:border-indigo-500 focus:bg-white"
+                                                }`}
                                                 placeholder="••••••••"
                                                 placeholderTextColor="#94a3b8"
                                                 secureTextEntry

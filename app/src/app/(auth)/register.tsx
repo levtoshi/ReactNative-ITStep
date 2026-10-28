@@ -21,8 +21,13 @@ import { RegisterSchema } from "@/schemas/RegisterSchema";
 import * as ImagePicker from "expo-image-picker";
 import {ImagePickerButton} from "@/components/form/ImagePickerButton"
 
-const inputClass =
-    "mb-2 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white";
+// Якщо в полі помилка валідації — рамка і фон червоні
+const inputClass = (hasError: boolean) =>
+    `mb-2 h-14 w-full rounded-xl border px-4 text-base text-slate-900 ${
+        hasError
+            ? "border-red-500 bg-red-50"
+            : "border-slate-300 bg-slate-50 focus:border-indigo-500 focus:bg-white"
+    }`;
 
 const RegisterScreen = () => {
     const lastNameRef = useRef<TextInput>(null);
@@ -95,7 +100,7 @@ const RegisterScreen = () => {
                                     name="firstName"
                                     render={({ field: { onChange, onBlur, value } }) => (
                                         <TextInput
-                                            className={inputClass}
+                                            className={inputClass(!!errors.firstName)}
                                             value={value}
                                             onChangeText={onChange}
                                             onBlur={onBlur}
@@ -125,7 +130,7 @@ const RegisterScreen = () => {
                                     render={({ field: { onChange, onBlur, value } }) => (
                                         <TextInput
                                             ref={lastNameRef}
-                                            className={inputClass}
+                                            className={inputClass(!!errors.lastName)}
                                             value={value}
                                             onChangeText={onChange}
                                             onBlur={onBlur}
@@ -155,7 +160,7 @@ const RegisterScreen = () => {
                                     render={({ field: { onChange, onBlur, value } }) => (
                                         <TextInput
                                             ref={emailRef}
-                                            className={inputClass}
+                                            className={inputClass(!!errors.email)}
                                             value={value}
                                             onChangeText={onChange}
                                             onBlur={onBlur}
@@ -187,7 +192,7 @@ const RegisterScreen = () => {
                                     render={({ field: { onChange, onBlur, value } }) => (
                                         <TextInput
                                             ref={passwordRef}
-                                            className={inputClass}
+                                            className={inputClass(!!errors.password)}
                                             value={value}
                                             onChangeText={onChange}
                                             onBlur={onBlur}
