@@ -59,19 +59,18 @@ public class AccountController(UserManager<UserEntity> userManager)
 
     }
 
-    [HttpGet("GetAll")]
+    [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var users = await userManager.Users
             .Select(u => new
             {
                 u.Id,
-                u.UserName,
                 u.Email,
                 u.FirstName,
                 u.LastName,
                 u.Image,
-                u.DateCreated
+                Registered = u.DateCreated.ToString("dd.MM.yyyy HH:mm:ss")
             })
             .ToListAsync();
 
