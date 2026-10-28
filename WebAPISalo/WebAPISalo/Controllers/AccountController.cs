@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using WebAPISalo.Constants;
 using WebAPISalo.Data.Identity;
 using WebAPISalo.Models.Account;
@@ -56,5 +57,24 @@ public class AccountController(UserManager<UserEntity> userManager)
 
         return Ok(new { Token = "Тут буде токен авторизації на сервері" });
 
+    }
+
+    [HttpGet("GetAll")]
+    public async Task<IActionResult> GetAll()
+    {
+        var users = await userManager.Users
+            .Select(u => new
+            {
+                u.Id,
+                u.UserName,
+                u.Email,
+                u.FirstName,
+                u.LastName,
+                u.Image,
+                u.DateCreated
+            })
+            .ToListAsync();
+
+        return Ok(users);
     }
 }
