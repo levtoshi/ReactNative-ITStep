@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using WebAPISalo.Constants;
 using WebAPISalo.Data.Identity;
 using WebAPISalo.Models.Account;
@@ -62,6 +63,8 @@ public class AccountController(UserManager<UserEntity> userManager)
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
+        var kyivTz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Kiev");
+
         var users = await userManager.Users
             .Select(u => new
             {
@@ -70,9 +73,12 @@ public class AccountController(UserManager<UserEntity> userManager)
                 u.FirstName,
                 u.LastName,
                 u.Image,
-                Registered = u.DateCreated.ToString("dd.MM.yyyy HH:mm:ss")
+                Registered = TimeZoneInfo.ConvertTimeFromUtc(
+                    DateTime.SpecifyKind(u.DateCreated, DateTimeKind.Utc), kyivTz)
+                   .ToString("dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture)
             })
             .ToListAsync();
+
 
         return Ok(users);
     }

@@ -11,6 +11,7 @@ import {
     TouchableWithoutFeedback,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {router} from "expo-router";
 
 const RegisterScreen = () => {
     const passwordRef = useRef(null);
@@ -72,9 +73,17 @@ const RegisterScreen = () => {
                                     onSubmitEditing={Keyboard.dismiss}
                                 />
 
-                                <TouchableOpacity className="h-14 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700">
+                                <TouchableOpacity className="h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700">
                                     <Text className="text-base font-semibold text-white">
                                         Реєстрація
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    onPress={() => router.replace("/login")}
+                                    className="h-14 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700">
+                                    <Text className="text-base font-semibold text-white">
+                                        Вхід
                                     </Text>
                                 </TouchableOpacity>
                             </View>
