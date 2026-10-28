@@ -45,6 +45,7 @@ const RegisterScreen = () => {
         control,
         handleSubmit,
         watch, //Ми зможемо слідкувати за певним полем в класі
+        setValue, // записує значення в поле форми з коду (тут — вибране фото)
         formState: { errors, isSubmitting },
     } = useForm<IRegisterType>({
         resolver: zodResolver(RegisterSchema),
@@ -52,6 +53,26 @@ const RegisterScreen = () => {
     });
 
     const image = watch("imageFile");
+
+    // Відкриває галерею, і вибране фото записується в поле форми imageFile
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'], // лише фото
+            allowsEditing: true,    // можна обрізати після вибору
+            aspect: [1, 1],         // квадрат (для круглої аватарки; працює на Android)
+            quality: 0.8,           // трохи стискаємо
+        });
+
+        // Користувач закрив галерею, нічого не вибравши
+        if (result.canceled) return;
+
+        const asset = result.assets[0];
+        setValue("imageFile", {
+            url: asset.uri,
+            name: asset.fileName ?? "photo.jpg",
+            type: asset.mimeType ?? "image/jpeg",
+        });
+    };
 
     const url = "https://salo.itstep.click/api/Account/Register";
 
@@ -90,6 +111,17 @@ const RegisterScreen = () => {
                             <Text className="mb-8 text-center text-base text-slate-500">
                                 Створити новий акаунт
                             </Text>
+
+                            {/* Фото: до вибору — значок камери, після — саме фото в колі */}
+                            <View className="mb-6 items-center">
+                                <ImagePickerButton
+                                    imageUri={image?.url ?? null}
+                                    onPress={pickImage}
+                                />
+                                <Text className="mt-2 text-sm text-slate-500">
+                                    {image ? "Натисніть, щоб змінити фото" : "Натисніть, щоб вибрати фото"}
+                                </Text>
+                            </View>
 
                             {/* Ім'я */}
                             <View className="mb-5">
