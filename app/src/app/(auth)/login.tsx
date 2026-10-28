@@ -67,7 +67,8 @@ const LoginScreen = () => {
                         automaticallyAdjustKeyboardInsets
                         showsVerticalScrollIndicator={false}
                     >
-                        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+                        {/* На вебі клік по полю спливає до цього обгортання і Keyboard.dismiss знімає фокус, тому там його не викликаємо */}
+                        <TouchableWithoutFeedback onPress={Platform.OS === 'web' ? undefined : Keyboard.dismiss} accessible={false}>
                             <View className="w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl">
                                 <Text className="mb-2 text-center text-3xl font-bold text-slate-900">
                                     Вхід
@@ -87,7 +88,7 @@ const LoginScreen = () => {
                                             <TextInput
                                                 className={`mb-2 h-14 w-full rounded-xl border px-4 text-base text-slate-900 ${
                                                     errors.email
-                                                        ? "border-red-500 bg-red-50"
+                                                        ? "border-red-500 bg-red-50 focus:border-red-500 focus:bg-red-50"
                                                         : "border-slate-300 bg-slate-50 focus:border-indigo-500 focus:bg-white"
                                                 }`}
                                                 value={value}
@@ -121,7 +122,7 @@ const LoginScreen = () => {
                                                 onChangeText={onChange}
                                                 className={`mb-2 h-14 w-full rounded-xl border px-4 text-base text-slate-900 ${
                                                     errors.password
-                                                        ? "border-red-500 bg-red-50"
+                                                        ? "border-red-500 bg-red-50 focus:border-red-500 focus:bg-red-50"
                                                         : "border-slate-300 bg-slate-50 focus:border-indigo-500 focus:bg-white"
                                                 }`}
                                                 placeholder="••••••••"
