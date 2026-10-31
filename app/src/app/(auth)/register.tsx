@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import {useRef} from 'react';
 import {
     View,
     Text,
@@ -11,15 +11,16 @@ import {
     TouchableWithoutFeedback,
     Pressable,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from "expo-router";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {router} from "expo-router";
+import {Controller, useForm} from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
 import axios from "axios";
-import { IRegisterType } from "@/types/auth/IRegisterType";
-import { RegisterSchema } from "@/schemas/RegisterSchema";
+import {IRegisterType} from "@/types/auth/IRegisterType";
+import {RegisterSchema} from "@/schemas/RegisterSchema";
 import * as ImagePicker from "expo-image-picker";
 import {ImagePickerButton} from "@/components/form/ImagePickerButton"
+import {serialize} from "object-to-formdata";
 
 const inputClass =
     "mb-2 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white";
@@ -39,8 +40,9 @@ const RegisterScreen = () => {
     const {
         control,
         handleSubmit,
+        setValue,
         watch, //Ми зможемо слідкувати за певним полем в класі
-        formState: { errors, isSubmitting },
+        formState: {errors, isSubmitting},
     } = useForm<IRegisterType>({
         resolver: zodResolver(RegisterSchema),
         defaultValues: defaultValue,
@@ -48,11 +50,45 @@ const RegisterScreen = () => {
 
     const image = watch("imageFile");
 
+    const pickImage = async () => {
+        const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permissionResult) {
+            alert("Доступ до галереї потрібен для вибору фото.");
+            return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images, // лише фото
+            allowsEditing: true,    // можна обрізати після вибору
+            aspect: [1, 1],         // квадрат (для круглої аватарки; працює на Android)
+            quality: 1,           // трохи стискаємо
+        });
+
+
+        // Користувач закрив галерею, нічого не вибравши
+        if (result.canceled) return;
+        const asset = result.assets[0];
+        const data = {
+            uri: asset.uri,
+            name: asset.fileName ?? "photo.jpg",
+            type: asset.mimeType ?? "image/jpeg",
+        };
+        console.log("Select image",data);
+        setValue("imageFile",data);
+
+    }
+
     const url = "https://salo.itstep.click/api/Account/Register";
 
     const myOnSubmit = async (data: IRegisterType) => {
         try {
-            const result = await axios.post(url, data);
+            console.log("Register user ", data);
+            const formData = serialize(data);
+            const result = await axios.post(url, formData,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    }
+                });
             console.log("Успіх status", result.status);
             console.log("Успіх data", result.data);
             router.replace("/login");
@@ -85,6 +121,17 @@ const RegisterScreen = () => {
                                 Створити новий акаунт
                             </Text>
 
+                            {/* Фото: до вибору — значок камери, після — саме фото в колі */}
+                            <View className="mb-6 items-center">
+                                <ImagePickerButton
+                                    imageUri={image?.uri ?? null}
+                                    onPress={pickImage}
+                                />
+                                <Text className="mt-2 text-sm text-slate-500">
+                                    {image ? "Натисніть, щоб змінити фото" : "Натисніть, щоб вибрати фото"}
+                                </Text>
+                            </View>
+
                             {/* Ім'я */}
                             <View className="mb-5">
                                 <Text className="mb-2 text-sm font-medium text-slate-700">
@@ -93,7 +140,7 @@ const RegisterScreen = () => {
                                 <Controller
                                     control={control}
                                     name="firstName"
-                                    render={({ field: { onChange, onBlur, value } }) => (
+                                    render={({field: {onChange, onBlur, value}}) => (
                                         <TextInput
                                             className={inputClass}
                                             value={value}
@@ -122,7 +169,7 @@ const RegisterScreen = () => {
                                 <Controller
                                     control={control}
                                     name="lastName"
-                                    render={({ field: { onChange, onBlur, value } }) => (
+                                    render={({field: {onChange, onBlur, value}}) => (
                                         <TextInput
                                             ref={lastNameRef}
                                             className={inputClass}
@@ -152,7 +199,7 @@ const RegisterScreen = () => {
                                 <Controller
                                     control={control}
                                     name="email"
-                                    render={({ field: { onChange, onBlur, value } }) => (
+                                    render={({field: {onChange, onBlur, value}}) => (
                                         <TextInput
                                             ref={emailRef}
                                             className={inputClass}
@@ -184,7 +231,7 @@ const RegisterScreen = () => {
                                 <Controller
                                     control={control}
                                     name="password"
-                                    render={({ field: { onChange, onBlur, value } }) => (
+                                    render={({field: {onChange, onBlur, value}}) => (
                                         <TextInput
                                             ref={passwordRef}
                                             className={inputClass}

@@ -21,6 +21,7 @@
     "expo-system-ui": "~58.0.6",
     "expo-web-browser": "~58.0.6",
     "nativewind": "^4.2.7",
+    "object-to-formdata": "^5.0.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-hook-form": "^7.90.0",
