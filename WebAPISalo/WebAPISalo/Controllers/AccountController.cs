@@ -4,13 +4,15 @@ using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using WebAPISalo.Constants;
 using WebAPISalo.Data.Identity;
+using WebAPISalo.Interfaces;
 using WebAPISalo.Models.Account;
 
 namespace WebAPISalo.Controllers;
 
 [Route("api/[controller]/[action]")]
 [ApiController]
-public class AccountController(UserManager<UserEntity> userManager) 
+public class AccountController(UserManager<UserEntity> userManager,
+    IImageService imageService) 
     : ControllerBase
 {
     //private readonly UserManager<UserEntity> _userManager;
@@ -45,6 +47,17 @@ public class AccountController(UserManager<UserEntity> userManager)
             Email = model.Email,
             EmailConfirmed = true
         };
+        try
+        {
+            if(model.ImageFile!=null)
+            {
+                user.Image = await imageService.SaveOptimizedImageAsync(model.ImageFile);
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
 
         var createResult = await userManager.CreateAsync(user, model.Password);
         if (!createResult.Succeeded)

@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using WebAPISalo.Constants;
 using WebAPISalo.Data;
 using WebAPISalo.Data.Identity;
+using WebAPISalo.Interfaces;
+using WebAPISalo.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,11 +27,30 @@ builder.Services.AddIdentity<UserEntity, RoleEntity>(opt =>
     .AddEntityFrameworkStores<MyDbContext>()
     .AddDefaultTokenProviders();
 
+builder.Services.AddScoped<IImageService, ImageService>();
+
 builder.Services.AddControllers();
 
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
+
+try
+{
+    var myImage = builder.Configuration.GetRequiredSection("ImagesDir").Get<string>() ?? "myimages";
+    string path = Path.Combine(Directory.GetCurrentDirectory(), myImage);
+    Directory.CreateDirectory(path); //автоматично стоврить images
+
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(path),
+        RequestPath = $"/{myImage}"
+    });
+}
+catch (Exception ex)
+{
+    Console.WriteLine("Помилка запуску" + ex.Message);
+}
 
 // Configure the HTTP request pipeline.
 
