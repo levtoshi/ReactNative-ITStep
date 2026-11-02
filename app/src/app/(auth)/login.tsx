@@ -17,6 +17,7 @@ import {Controller, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {LoginSchema} from "@/schemas/LoginSchema";
 import axios from "axios";
+import {IAuthResponse} from "@/types/auth/IAuthResponse";
 
 const LoginScreen = () => {
     const passwordRef = useRef(null);
@@ -39,9 +40,11 @@ const LoginScreen = () => {
     const myOnSubmit = async (data: ILoginType) => {
 
         try {
-            const result = await axios.post(url, data);
+            const result =
+                await axios.post<IAuthResponse>(url, data);
             console.log("Усіх status", result.status);
-            console.log("Усіх data", result.data);
+            const {token} = result.data;
+            console.log("Усіх data", token);
         }
         catch (error) {
             console.log("Помилка", error);
