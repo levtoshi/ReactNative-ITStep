@@ -18,9 +18,15 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {LoginSchema} from "@/schemas/LoginSchema";
 import axios from "axios";
 import {IAuthResponse} from "@/types/auth/IAuthResponse";
+import * as SecureStore from 'expo-secure-store';
+import {useAppDispatch} from "@/store";
+import {loginSuccess} from "@/store/reducers/AuthSlice";
 
 const LoginScreen = () => {
     const passwordRef = useRef(null);
+
+    //Може посилати команди у Redux
+    const dispatch = useAppDispatch();
 
     const defaultValue: ILoginType = {
         email: "",
@@ -44,6 +50,8 @@ const LoginScreen = () => {
                 await axios.post<IAuthResponse>(url, data);
             console.log("Усіх status", result.status);
             const {token} = result.data;
+            await SecureStore.setItemAsync("token", token);
+            dispatch(loginSuccess(token)); //тут ми логінимо у системі користувача
             console.log("Усіх data", token);
         }
         catch (error) {
