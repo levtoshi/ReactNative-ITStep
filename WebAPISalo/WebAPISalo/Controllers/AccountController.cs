@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -12,15 +13,10 @@ namespace WebAPISalo.Controllers;
 [Route("api/[controller]/[action]")]
 [ApiController]
 public class AccountController(UserManager<UserEntity> userManager,
-    IImageService imageService) 
+    IImageService imageService,
+    IJwtTokenService jwtTokenService) 
     : ControllerBase
 {
-    //private readonly UserManager<UserEntity> _userManager;
-
-    //public AccountController(UserManager<UserEntity> userManager)
-    //{
-    //    _userManager = userManager;
-    //}
     [HttpPost]
     public async Task<IActionResult> Login([FromBody] LoginModel model)
     {
@@ -30,7 +26,8 @@ public class AccountController(UserManager<UserEntity> userManager,
             bool isCheckPassword = await userManager.CheckPasswordAsync(user, model.Password);
             if(isCheckPassword)
             {
-                return Ok(new { Token = "Тут буде токен авторизації на сервері" });
+                string token = await jwtTokenService.CreateTokenAsync(user);
+                return Ok(new { Token = token });
             }
         }
         return Unauthorized(new { error="Дані вказано не вірно!" });
@@ -69,11 +66,13 @@ public class AccountController(UserManager<UserEntity> userManager,
 
         var roleResult = await userManager.AddToRoleAsync(user, Roles.User);
 
-        return Ok(new { Token = "Тут буде токен авторизації на сервері" });
+        string token = await jwtTokenService.CreateTokenAsync(user);
+        return Ok(new { Token = token });
 
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<IActionResult> GetAll()
     {
         var kyivTz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Kiev");
