@@ -30,9 +30,6 @@ const inputClass =
     "mb-2 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white";
 
 const RegisterScreen = () => {
-    const lastNameRef = useRef<TextInput>(null);
-    const emailRef = useRef<TextInput>(null);
-    const passwordRef = useRef<TextInput>(null);
 
     const defaultValue: IRegisterType = {
         firstName: "",
@@ -82,6 +79,8 @@ const RegisterScreen = () => {
     }
 
     const url = "https://salo.itstep.click/api/Account/Register";
+
+    const dispatch = useAppDispatch();
 
     const myOnSubmit = async (data: IRegisterType) => {
         try {
@@ -158,7 +157,7 @@ const RegisterScreen = () => {
                                             autoComplete="given-name"
                                             textContentType="givenName"
                                             returnKeyType="next"
-                                            onSubmitEditing={() => lastNameRef.current?.focus()}
+                                            // onSubmitEditing={() => lastNameRef.current?.focus()}
                                         />
                                     )}
                                 />
@@ -177,7 +176,7 @@ const RegisterScreen = () => {
                                     name="lastName"
                                     render={({field: {onChange, onBlur, value}}) => (
                                         <TextInput
-                                            ref={lastNameRef}
+                                            // ref={lastNameRef}
                                             className={inputClass}
                                             value={value}
                                             onChangeText={onChange}
@@ -188,7 +187,7 @@ const RegisterScreen = () => {
                                             autoComplete="family-name"
                                             textContentType="familyName"
                                             returnKeyType="next"
-                                            onSubmitEditing={() => emailRef.current?.focus()}
+                                            // onSubmitEditing={() => emailRef.current?.focus()}
                                         />
                                     )}
                                 />
@@ -207,7 +206,7 @@ const RegisterScreen = () => {
                                     name="email"
                                     render={({field: {onChange, onBlur, value}}) => (
                                         <TextInput
-                                            ref={emailRef}
+                                            // ref={emailRef}
                                             className={inputClass}
                                             value={value}
                                             onChangeText={onChange}
@@ -220,7 +219,7 @@ const RegisterScreen = () => {
                                             autoComplete="email"
                                             textContentType="emailAddress"
                                             returnKeyType="next"
-                                            onSubmitEditing={() => passwordRef.current?.focus()}
+                                            // onSubmitEditing={() => passwordRef.current?.focus()}
                                         />
                                     )}
                                 />
@@ -239,7 +238,7 @@ const RegisterScreen = () => {
                                     name="password"
                                     render={({field: {onChange, onBlur, value}}) => (
                                         <TextInput
-                                            ref={passwordRef}
+                                            // ref={passwordRef}
                                             className={inputClass}
                                             value={value}
                                             onChangeText={onChange}
@@ -252,7 +251,7 @@ const RegisterScreen = () => {
                                             autoComplete="new-password"
                                             textContentType="newPassword"
                                             returnKeyType="done"
-                                            onSubmitEditing={handleSubmit(myOnSubmit)}
+                                            // onSubmitEditing={handleSubmit(myOnSubmit)}
                                         />
                                     )}
                                 />
@@ -262,7 +261,7 @@ const RegisterScreen = () => {
                             </View>
 
                             <Pressable
-                                onPress={handleSubmit(myOnSubmit)}
+                                onPress={() => handleSubmit(myOnSubmit)()}
                                 disabled={isSubmitting}
                                 className="h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700"
                             >

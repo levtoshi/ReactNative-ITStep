@@ -146,7 +146,7 @@ const LoginScreen = () => {
 
 
                                 <Pressable
-                                    onPress={handleSubmit(myOnSubmit)}
+                                    onPress={()=>handleSubmit(myOnSubmit)()}
                                     className="h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700"
 
                                 >

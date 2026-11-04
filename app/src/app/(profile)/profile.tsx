@@ -29,18 +29,11 @@ const inputClass =
     "mb-2 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white";
 
 const ProfileScreen = () => {
-    const lastNameRef = useRef<TextInput>(null);
-    const emailRef = useRef<TextInput>(null);
-    const passwordRef = useRef<TextInput>(null);
 
     const {user} = useAppSelector(state => state.auth);
-    // console.log("auth user", user)
-
-    console.log("user image", user!.image)
-    console.log("user name", user!.name)
 
     const defaultValue: IProfileType = {
-        name: user!.name,
+        name: "",
         email: "",
     };
 
@@ -174,7 +167,6 @@ const ProfileScreen = () => {
                                             autoComplete="given-name"
                                             textContentType="givenName"
                                             returnKeyType="next"
-                                            onSubmitEditing={() => lastNameRef.current?.focus()}
                                         />
                                     )}
                                 />
@@ -194,7 +186,6 @@ const ProfileScreen = () => {
                                     name="email"
                                     render={({field: {onChange, onBlur, value}}) => (
                                         <TextInput
-                                            ref={emailRef}
                                             className={inputClass}
                                             value={value}
                                             onChangeText={onChange}
@@ -207,7 +198,6 @@ const ProfileScreen = () => {
                                             autoComplete="email"
                                             textContentType="emailAddress"
                                             returnKeyType="next"
-                                            onSubmitEditing={() => passwordRef.current?.focus()}
                                         />
                                     )}
                                 />
@@ -217,7 +207,7 @@ const ProfileScreen = () => {
                             </View>
 
                             <Pressable
-                                onPress={handleSubmit(myOnSubmit)}
+                                onPress={() => handleSubmit(myOnSubmit)()}
                                 disabled={isSubmitting}
                                 className="h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700"
                             >
