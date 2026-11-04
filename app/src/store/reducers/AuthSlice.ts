@@ -6,6 +6,7 @@ const getUserFromToken = (token: string) => {
     try {
         if (!token) return null;
         const decode = jwtDecode<IUser>(token);
+        // console.log("user auth", decode);
         return decode ?? null;
     }
     catch (error) {
@@ -26,7 +27,9 @@ export const AuthSlice = createSlice({
     initialState,
     reducers: {
         loginSuccess: (state, action: PayloadAction<string>) => {
+            // console.log("Data user ", action.payload)
             const user = getUserFromToken(action.payload);
+            // console.log("auth user store", user);
             if(user)
             {
                 state.user = {...user, token: action.payload};

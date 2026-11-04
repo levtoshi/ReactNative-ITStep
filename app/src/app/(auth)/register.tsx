@@ -21,6 +21,10 @@ import {RegisterSchema} from "@/schemas/RegisterSchema";
 import * as ImagePicker from "expo-image-picker";
 import {ImagePickerButton} from "@/components/form/ImagePickerButton"
 import {serialize} from "object-to-formdata";
+import * as SecureStore from "expo-secure-store";
+import {loginSuccess, logout} from "@/store/reducers/AuthSlice";
+import {useAppDispatch} from "@/store";
+import {IAuthResponse} from "@/types/auth/IAuthResponse";
 
 const inputClass =
     "mb-2 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white";
@@ -83,15 +87,17 @@ const RegisterScreen = () => {
         try {
             console.log("Register user ", data);
             const formData = serialize(data);
-            const result = await axios.post(url, formData,
+            const result = await axios
+                .post<IAuthResponse>(url, formData,
                 {
                     headers: {
                         "Content-Type": "multipart/form-data",
                     }
                 });
-            console.log("Успіх status", result.status);
-            console.log("Успіх data", result.data);
-            router.replace("/login");
+            const {token} = result.data;
+            await SecureStore.setItemAsync("token", token);
+            dispatch(loginSuccess(token)); //тут ми логінимо у системі користувача
+            router.push("/profile");
         } catch (error) {
             console.log("Помилка", error);
         }

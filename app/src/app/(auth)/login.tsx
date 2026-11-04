@@ -11,7 +11,7 @@ import {
     TouchableWithoutFeedback, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {router} from "expo-router";
+import {router, useRouter} from "expo-router";
 import {ILoginType} from "@/types/auth/ILoginType";
 import {Controller, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
@@ -24,6 +24,8 @@ import {loginSuccess} from "@/store/reducers/AuthSlice";
 
 const LoginScreen = () => {
     const passwordRef = useRef(null);
+
+    const router = useRouter();
 
     //Може посилати команди у Redux
     const dispatch = useAppDispatch();
@@ -48,11 +50,13 @@ const LoginScreen = () => {
         try {
             const result =
                 await axios.post<IAuthResponse>(url, data);
-            console.log("Усіх status", result.status);
+            // console.log("Усіх status", result.status);
             const {token} = result.data;
             await SecureStore.setItemAsync("token", token);
             dispatch(loginSuccess(token)); //тут ми логінимо у системі користувача
-            console.log("Усіх data", token);
+            router.push("/profile");
+
+            // console.log("Усіх data", token);
         }
         catch (error) {
             console.log("Помилка", error);
