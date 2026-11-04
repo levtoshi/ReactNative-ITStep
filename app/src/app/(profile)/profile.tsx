@@ -1,4 +1,4 @@
-import {useRef} from 'react';
+import {useEffect, useRef} from 'react';
 import {
     View,
     Text,
@@ -16,14 +16,14 @@ import {router} from "expo-router";
 import {Controller, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import axios from "axios";
-import {IRegisterType} from "@/types/auth/IRegisterType";
-import {RegisterSchema} from "@/schemas/RegisterSchema";
 import * as ImagePicker from "expo-image-picker";
 import {ImagePickerButton} from "@/components/form/ImagePickerButton"
 import {serialize} from "object-to-formdata";
 import {useAppDispatch, useAppSelector} from "@/store";
 import * as SecureStore from "expo-secure-store";
 import {logout} from "@/store/reducers/AuthSlice";
+import {IProfileType} from "@/types/profile/IProfileType";
+import {ProfileSchema} from "@/schemas/ProfileSchema";
 
 const inputClass =
     "mb-2 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white";
@@ -37,12 +37,11 @@ const ProfileScreen = () => {
     // console.log("auth user", user)
 
     console.log("user image", user!.image)
+    console.log("user name", user!.name)
 
-    const defaultValue: IRegisterType = {
-        firstName: "",
-        lastName: "",
+    const defaultValue: IProfileType = {
+        name: user!.name,
         email: "",
-        password: "",
     };
 
     const {
@@ -50,11 +49,21 @@ const ProfileScreen = () => {
         handleSubmit,
         setValue,
         watch, //Ми зможемо слідкувати за певним полем в класі
+        reset,
         formState: {errors, isSubmitting},
-    } = useForm<IRegisterType>({
-        resolver: zodResolver(RegisterSchema),
+    } = useForm<IProfileType>({
+        resolver: zodResolver(ProfileSchema),
         defaultValues: defaultValue,
     });
+
+    useEffect(() => {
+        if (user) {
+            reset({
+                name: user.name,
+                email: user.email ?? "",
+            });
+        }
+    }, [user, reset]);
 
     const image = watch("imageFile");
 
@@ -95,7 +104,7 @@ const ProfileScreen = () => {
 
     const url = "https://salo.itstep.click/api/Account/Register";
 
-    const myOnSubmit = async (data: IRegisterType) => {
+    const myOnSubmit = async (data: IProfileType) => {
         try {
             console.log("Register user ", data);
             const formData = serialize(data);
@@ -152,7 +161,7 @@ const ProfileScreen = () => {
                                 </Text>
                                 <Controller
                                     control={control}
-                                    name="firstName"
+                                    name="name"
                                     render={({field: {onChange, onBlur, value}}) => (
                                         <TextInput
                                             className={inputClass}
@@ -169,40 +178,11 @@ const ProfileScreen = () => {
                                         />
                                     )}
                                 />
-                                {errors.firstName && (
-                                    <Text className="mt-1 text-xs text-red-500">{errors.firstName.message}</Text>
+                                {errors.name && (
+                                    <Text className="mt-1 text-xs text-red-500">{errors.name.message}</Text>
                                 )}
                             </View>
 
-                            {/* Прізвище */}
-                            <View className="mb-5">
-                                <Text className="mb-2 text-sm font-medium text-slate-700">
-                                    Прізвище
-                                </Text>
-                                <Controller
-                                    control={control}
-                                    name="lastName"
-                                    render={({field: {onChange, onBlur, value}}) => (
-                                        <TextInput
-                                            ref={lastNameRef}
-                                            className={inputClass}
-                                            value={value}
-                                            onChangeText={onChange}
-                                            onBlur={onBlur}
-                                            placeholder="Петренко"
-                                            placeholderTextColor="#94a3b8"
-                                            autoCapitalize="words"
-                                            autoComplete="family-name"
-                                            textContentType="familyName"
-                                            returnKeyType="next"
-                                            onSubmitEditing={() => emailRef.current?.focus()}
-                                        />
-                                    )}
-                                />
-                                {errors.lastName && (
-                                    <Text className="mt-1 text-xs text-red-500">{errors.lastName.message}</Text>
-                                )}
-                            </View>
 
                             {/* Email */}
                             <View className="mb-5">
@@ -236,45 +216,13 @@ const ProfileScreen = () => {
                                 )}
                             </View>
 
-                            {/* Пароль */}
-                            <View className="mb-5">
-                                <Text className="mb-2 text-sm font-medium text-slate-700">
-                                    Пароль
-                                </Text>
-                                <Controller
-                                    control={control}
-                                    name="password"
-                                    render={({field: {onChange, onBlur, value}}) => (
-                                        <TextInput
-                                            ref={passwordRef}
-                                            className={inputClass}
-                                            value={value}
-                                            onChangeText={onChange}
-                                            onBlur={onBlur}
-                                            placeholder="••••••••"
-                                            placeholderTextColor="#94a3b8"
-                                            secureTextEntry
-                                            autoCapitalize="none"
-                                            autoCorrect={false}
-                                            autoComplete="new-password"
-                                            textContentType="newPassword"
-                                            returnKeyType="done"
-                                            onSubmitEditing={handleSubmit(myOnSubmit)}
-                                        />
-                                    )}
-                                />
-                                {errors.password && (
-                                    <Text className="mt-1 text-xs text-red-500">{errors.password.message}</Text>
-                                )}
-                            </View>
-
                             <Pressable
                                 onPress={handleSubmit(myOnSubmit)}
                                 disabled={isSubmitting}
                                 className="h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700"
                             >
                                 <Text className="text-base font-semibold text-white">
-                                    Реєстрація
+                                    Оновити профіль
                                 </Text>
                             </Pressable>
 
