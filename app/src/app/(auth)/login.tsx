@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -24,6 +24,7 @@ import {loginSuccess} from "@/store/reducers/AuthSlice";
 
 const LoginScreen = () => {
     const passwordRef = useRef(null);
+    const [loginError, setLoginError] = useState<string | null>(null);
 
     const router = useRouter();
 
@@ -46,6 +47,7 @@ const LoginScreen = () => {
 
     const url = "https://salo.itstep.click/api/Account/Login";
     const myOnSubmit = async (data: ILoginType) => {
+        setLoginError(null);
 
         try {
             const result =
@@ -59,6 +61,13 @@ const LoginScreen = () => {
             // console.log("Усіх data", token);
         }
         catch (error) {
+            // 400 і 401 — невірний логін або пароль; текст береться з відповіді сервера
+            if (axios.isAxiosError<{ error?: string }>(error) &&
+                (error.response?.status === 400 || error.response?.status === 401)) {
+                setLoginError(error.response.data?.error ?? "Невірний логін або пароль");
+            } else {
+                setLoginError("Не вдалося увійти. Перевірте з'єднання і спробуйте ще раз.");
+            }
             console.log("Помилка", error);
         }
 
@@ -144,6 +153,10 @@ const LoginScreen = () => {
                                     )}
                                 </View>
 
+
+                                {loginError && (
+                                    <Text className="mb-4 text-sm text-red-500">{loginError}</Text>
+                                )}
 
                                 <TouchableOpacity
                                     onPress={() => router.push("/forgot-password")}
