@@ -11,6 +11,7 @@ using WebAPISalo.Data;
 using WebAPISalo.Data.Identity;
 using WebAPISalo.Interfaces;
 using WebAPISalo.Models.Account;
+using WebAPISalo.Models.Settings;
 using WebAPISalo.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +35,8 @@ builder.Services.AddIdentity<UserEntity, RoleEntity>(opt =>
 
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
 
 builder.Services.AddControllers();
 

@@ -102,6 +102,7 @@ ReactNative-P34/
 | Зображення | SkiaSharp (+ Linux native assets) | `4.154.0` |
 | API-документація | Swashbuckle (Swagger UI) | `9.0.6` |
 | База даних | PostgreSQL | `postgres:18.1` (Docker) |
+| Пошта | SMTP-конфіг для `smtp.ukr.net` у `appsettings.json` (секція `Smtp`). Клієнта SMTP і сервісу відправки ще немає | — |
 
 ### 3.3 Android (`AndroidApp/`) — не пов'язаний з API
 
@@ -195,8 +196,9 @@ Logout:    profile.tsx → SecureStore.delete("token") → dispatch(logout) → 
 
 | Джерело | Ключі |
 |---|---|
-| `appsettings.json` | `Jwt:Key`, `ConnectionStrings:DefaultConnection` (порожній), `ImagesDir`, `ImageSizes` |
+| `appsettings.json` | `Jwt:Key`, `ConnectionStrings:DefaultConnection` (порожній), `ImagesDir`, `ImageSizes`, `Smtp:Host`, `Smtp:Port` (2525), `Smtp:UserName`, `Smtp:Password` |
 | Змінні середовища (Docker) | `ConnectionStrings__DefaultConnection`, `ASPNETCORE_ENVIRONMENT=Production` |
+| Рекомендовано для секретів | `Smtp__Password` і `Jwt__Key` як змінні середовища замість значень у файлі |
 | `salo.itstep.click/.env` | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `VOLUME_POSTGRES`, `VOLUME_SERVERAPI` |
 | Клієнт | Немає env-конфігурації; URL API захардкоджено в трьох екранах |
 
@@ -217,7 +219,9 @@ Logout:    profile.tsx → SecureStore.delete("token") → dispatch(logout) → 
                                  [db-backup: pg_dump щодня]
 ```
 
-Клієнт і API з'єднані лише контрактом HTTP. Спільного коду немає. Контракт описаний у `AccountController`, `RegisterModel`, `LoginModel` і типах `app/src/types/`.
+Клієнт і API з'єднані лише контрактом HTTP. Спільного коду немає.
+
+API має ще одне вихідне з'єднання: SMTP-сервер `smtp.ukr.net`, порт 2525. Конфіг є, але коду відправки немає. Контракт описаний у `AccountController`, `RegisterModel`, `LoginModel` і типах `app/src/types/`.
 
 ---
 
@@ -240,7 +244,7 @@ Logout:    profile.tsx → SecureStore.delete("token") → dispatch(logout) → 
 
 | # | Ризик | Де | Наслідок | Пропозиція |
 |---|---|---|---|---|
-| 1 | **JWT-ключ у `appsettings.json` в git** | `WebAPISalo/.../appsettings.json` | Будь-хто з доступом до репо може підписувати токени | Перенести в User Secrets / env, ротувати ключ |
+| 1 | **Секрети в `appsettings.json` у git: JWT-ключ і пароль SMTP** | `WebAPISalo/.../appsettings.json` (`Jwt:Key`, `Smtp:Password`) | Будь-хто з доступом до репо може підписувати токени і відправляти пошту з облікового запису ukr.net | Перенести в User Secrets / env, ротувати JWT-ключ і змінити пароль ukr.net |
 | 2 | **`GetAll` доступний будь-якому автентифікованому користувачу** | `AccountController.GetAll` | Звичайний `User` бачить email і ПІБ усіх користувачів | Додати `[Authorize(Roles = Roles.Admin)]` |
 | 3 | **Відкриті тестові облікові дані в seed** | `Program.cs` (`Admin123`, `User123`) | Вхід в адмін-акаунт, якщо seed потрапив у продакшен-БД | Прибрати seed з Production або генерувати паролі |
 | 4 | **Збереження профілю через `/Register`** | `profile.tsx` | Немає оновлення профілю; запит створить нового користувача або поверне помилку | Додати `PUT /api/Account/Profile` (`[Authorize]`) |
@@ -258,6 +262,8 @@ Logout:    profile.tsx → SecureStore.delete("token") → dispatch(logout) → 
 | 16 | **Пароль і email у логах клієнта** | `console.log` у `login.tsx`, `profile.tsx` (`data`) | Персональні дані в логах | Прибрати логування даних форм |
 | 17 | **Дубльовані `StyleSheet`/класи та імпорти** | `login.tsx`, `register.tsx`, `profile.tsx` | Копіпаст, важко змінювати | Винести спільні компоненти форм |
 | 18 | **Немає версіонування API і обробки помилок** | API | Зміна контракту ламає клієнт без попередження | Уніфікований формат помилок (ProblemDetails) |
+| 19 | **Зайва кома в `Smtp:UserName`** | `appsettings.json` (`"super.novakvova@ukr.net,"`) | Автентифікація SMTP не пройде, помилка виявиться лише під час відправки | Прибрати кому в кінці рядка |
+| 20 | **Неповна SMTP-конфігурація** | `appsettings.json` (`Smtp`) | Немає `FromEmail`, `EnableSsl`, `FromName`. Режим TLS не задано явно, тому код відправки мусить сам вирішити, як підключатися до порту 2525 | Додати відсутні поля або зафіксувати режим TLS у коді |
 
 ---
 
@@ -289,3 +295,4 @@ build_and_push.bat
 3. Цільові платформи: лише iOS/Android, чи також веб (`web.output: "server"` вказує на SSR-експеримент)?
 4. Де має жити сховище зображень у продакшені: локальний volume чи зовнішнє (S3/Blob)?
 5. Чи є план прибрати `AndroidApp/` з репозиторію?
+6. Для чого потрібна пошта: підтвердження реєстрації, скидання пароля чи сповіщення? Від якої адреси слати листи і через яку бібліотеку (`MailKit` чи `System.Net.Mail`)?
