@@ -18,10 +18,10 @@ namespace WebAPISalo.Controllers
         public async Task<IEnumerable<WeatherForecast>> Get()
         {
 
-            await emailService.SendAsync(
-                to: "novakvova@gmail.com", 
-                subject: "Яка чудова погода", 
-                htmlBody: "Їж сало і <strong>будеш</strong> крутим :)");
+            //await emailService.SendAsync(
+            //    to: "novakvova@gmail.com", 
+            //    subject: "Яка чудова погода", 
+            //    htmlBody: "Їж сало і <strong>будеш</strong> крутим :)");
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast
             {
                 Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
