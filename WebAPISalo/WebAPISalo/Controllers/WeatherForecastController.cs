@@ -22,6 +22,10 @@ namespace WebAPISalo.Controllers
             //    to: "novakvova@gmail.com", 
             //    subject: "Яка чудова погода", 
             //    htmlBody: "Їж сало і <strong>будеш</strong> крутим :)");
+
+            await emailService.SendPasswordResetCodeAsync(
+                email: "novakvova@gmail.com",
+                code: "238783");
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast
             {
                 Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),

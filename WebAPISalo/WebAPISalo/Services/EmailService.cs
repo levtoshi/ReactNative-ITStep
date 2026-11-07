@@ -1,3 +1,5 @@
+using System.Net;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Options;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -9,7 +11,6 @@ namespace WebAPISalo.Services;
 
 /// <summary>
 /// Відправка листів через SMTP за допомогою MailKit.
-/// Порт 465 використовує SSL з початку з'єднання, інші порти — STARTTLS.
 /// </summary>
 public class EmailService(
     IOptions<SmtpSettings> options,
@@ -25,7 +26,7 @@ public class EmailService(
             throw new InvalidOperationException("Smtp:Host не задано в конфігурації");
 
         var message = new MimeMessage();
-        message.From.Add(MailboxAddress.Parse(_settings.UserName));
+        message.From.Add(new MailboxAddress("Група p34", _settings.UserName));
         message.To.Add(MailboxAddress.Parse(to));
         message.Subject = subject;
         message.Body = new BodyBuilder { HtmlBody = htmlBody }.ToMessageBody();
@@ -37,5 +38,17 @@ public class EmailService(
         await client.DisconnectAsync(true);
 
         logger.LogInformation("Лист з темою \"{Subject}\" надіслано", subject);
+    }
+
+    public async Task SendPasswordResetCodeAsync(string email, string code, CancellationToken cancellationToken = default)
+    {
+        var templatePath = Path.Combine(Directory.GetCurrentDirectory(), "EmailTemplates", "PasswordResetCode.html");
+        var template = await File.ReadAllTextAsync(templatePath, cancellationToken);
+
+        var body = template
+            .Replace("{{Email}}", WebUtility.HtmlEncode(email))
+            .Replace("{{Code}}", WebUtility.HtmlEncode(code));
+
+        await SendAsync(email, "Відновлення пароля Salo", body, cancellationToken);
     }
 }
