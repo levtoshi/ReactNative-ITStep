@@ -145,6 +145,15 @@ const LoginScreen = () => {
                                 </View>
 
 
+                                <TouchableOpacity
+                                    onPress={() => router.push("/forgot-password")}
+                                    className="mb-4 items-end"
+                                >
+                                    <Text className="text-sm font-medium text-indigo-600">
+                                        Забули пароль?
+                                    </Text>
+                                </TouchableOpacity>
+
                                 <Pressable
                                     onPress={()=>handleSubmit(myOnSubmit)()}
                                     className="h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700"

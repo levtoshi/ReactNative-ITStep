@@ -12,7 +12,7 @@
 | Компонент | Призначення | Статус |
 |---|---|---|
 | `app/` | Мобільний/веб клієнт (Expo, React Native) | Активна розробка |
-| `WebAPISalo/` | REST API (ASP.NET Core 9) + Identity + PostgreSQL | Активна розробка |
+| `WebAPISalo/` | REST API (ASP.NET Core 9) + Identity + PostgreSQL + SMTP (відновлення пароля) | Активна розробка |
 | `AndroidApp/` | Android-застосунок на Java (шаблон "Empty Views Activity") | Не пов'язаний з API, ігнорувати |
 | `salo.itstep.click/` | Docker Compose для продакшену (API, PostgreSQL, бекапи) | Продакшен |
 | `build_and_push.bat` | Збірка і публікація Docker-образу API | Продакшен |
@@ -46,11 +46,13 @@ ReactNative-P34/
 │   └── WebAPISalo/
 │       ├── Program.cs        # Композиція DI, JWT, Swagger, статика, seed
 │       ├── Controllers/      # AccountController (+ WeatherForecast — шаблон)
-│       ├── Services/         # ImageService, JwtTokenService
-│       ├── Interfaces/       # IImageService, IJwtTokenService
+│       ├── Services/         # ImageService, JwtTokenService, EmailService
+│       ├── Interfaces/       # IImageService, IJwtTokenService, IEmailService
 │       ├── Data/             # MyDbContext, Identity-сутності
 │       ├── Migrations/       # EF Core-міграції (AddIdentityTabels)
-│       ├── Models/Account/   # LoginModel, RegisterModel (DTO)
+│       ├── EmailTemplates/   # PasswordResetCode.html (плейсхолдери {{Email}}, {{Code}})
+│       ├── Models/Account/   # LoginModel, RegisterModel, ForgotPasswordModel, ResetPasswordModel (DTO)
+│       ├── Models/Settings/  # SmtpSettings (блок Smtp з appsettings.json)
 │       ├── Constants/        # Roles
 │       ├── images/           # Приклад збережених WebP-зображень
 │       └── appsettings*.json
@@ -102,7 +104,7 @@ ReactNative-P34/
 | Зображення | SkiaSharp (+ Linux native assets) | `4.154.0` |
 | API-документація | Swashbuckle (Swagger UI) | `9.0.6` |
 | База даних | PostgreSQL | `postgres:18.1` (Docker) |
-| Пошта | SMTP-конфіг для `smtp.ukr.net` у `appsettings.json` (секція `Smtp`). Клієнта SMTP і сервісу відправки ще немає | — |
+| Пошта | MailKit (SMTP), `MailKit 4.18.2`. Сервер `smtp.ukr.net`, конфіг у секції `Smtp` | `4.18.2` |
 
 ### 3.3 Android (`AndroidApp/`) — не пов'язаний з API
 
@@ -153,7 +155,7 @@ Logout:    profile.tsx → SecureStore.delete("token") → dispatch(logout) → 
 **Шари:**
 
 1. **Контролери** — `AccountController` з маршрутами `api/Account/{Login|Register|GetAll}`.
-2. **Сервіси** — `JwtTokenService` (видача токена), `ImageService` (обробка зображень). Реєструються як `Scoped`, інтерфейси в `Interfaces/`.
+2. **Сервіси** — `JwtTokenService` (видача токена), `ImageService` (обробка зображень), `EmailService` (SMTP через MailKit). Реєструються як `Scoped`, інтерфейси в `Interfaces/`. `SmtpSettings` прив'язується через `IOptions` у `Program.cs`.
 3. **Ідентичність** — `UserManager`/`RoleManager` ASP.NET Identity; сутності `UserEntity : IdentityUser<long>`, `RoleEntity`, `UserRoleEntity`.
 4. **Персистентність** — `MyDbContext : IdentityDbContext<…, long, …>` з PostgreSQL. Міграції застосовуються при старті.
 5. **Статика** — `images/` віддається за `/images` через `UseStaticFiles`.
@@ -199,6 +201,27 @@ Logout:    profile.tsx → SecureStore.delete("token") → dispatch(logout) → 
 | `appsettings.json` | `Jwt:Key`, `ConnectionStrings:DefaultConnection` (порожній), `ImagesDir`, `ImageSizes`, `Smtp:Host`, `Smtp:Port` (2525), `Smtp:UserName`, `Smtp:Password` |
 | Змінні середовища (Docker) | `ConnectionStrings__DefaultConnection`, `ASPNETCORE_ENVIRONMENT=Production` |
 | Рекомендовано для секретів | `Smtp__Password` і `Jwt__Key` як змінні середовища замість значень у файлі |
+
+### 4.6 Відновлення пароля
+
+Потік на бекенді (`AccountController`):
+
+```
+POST /api/Account/ForgotPassword { email }
+  → FindByEmailAsync
+  → GenerateUserTokenAsync(user, DefaultEmailProvider, "ResetPassword")   → 6-значний код
+  → EmailService.SendPasswordResetCodeAsync → EmailTemplates/PasswordResetCode.html
+  → 200 (однакова відповідь, незалежно від наявності email)
+
+POST /api/Account/ResetPassword { email, code, newPassword }
+  → VerifyUserTokenAsync(...)                    → 400, якщо код невірний або прострочений
+  → GeneratePasswordResetTokenAsync + ResetPasswordAsync
+  → security stamp оновлюється → код стає недійсним
+```
+
+- Код не зберігається в БД. Його генерує вбудований `EmailTokenProvider` ASP.NET Identity і прив'язує до security stamp та призначення `ResetPassword`.
+- Моделі: `ForgotPasswordModel`, `ResetPasswordModel` (валідація через DataAnnotations: 6 цифр, пароль мін 6 символів).
+- Клієнт (`app/`) ще не має екранів відновлення пароля.
 | `salo.itstep.click/.env` | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `VOLUME_POSTGRES`, `VOLUME_SERVERAPI` |
 | Клієнт | Немає env-конфігурації; URL API захардкоджено в трьох екранах |
 
@@ -221,7 +244,7 @@ Logout:    profile.tsx → SecureStore.delete("token") → dispatch(logout) → 
 
 Клієнт і API з'єднані лише контрактом HTTP. Спільного коду немає.
 
-API має ще одне вихідне з'єднання: SMTP-сервер `smtp.ukr.net`, порт 2525. Конфіг є, але коду відправки немає. Контракт описаний у `AccountController`, `RegisterModel`, `LoginModel` і типах `app/src/types/`.
+API має ще одне вихідне з'єднання: SMTP-сервер `smtp.ukr.net`, порт 2525. Відправку виконує `EmailService` через MailKit. Контракт описаний у `AccountController`, `RegisterModel`, `LoginModel` і типах `app/src/types/`.
 
 ---
 
@@ -232,6 +255,8 @@ API має ще одне вихідне з'єднання: SMTP-сервер `sm
 | POST | `/api/Account/Login` | — | JSON `{ email, password }` | `200 { token }` / `401 { error }` |
 | POST | `/api/Account/Register` | — | multipart: `FirstName, LastName, Email, Password, ImageFile?` | `200 { token }` / `400 { error }` або `400 { erroor }` |
 | GET | `/api/Account/GetAll` | Bearer | — | `200` список `{ Id, Email, FirstName, LastName, Image, Registered }` |
+| POST | `/api/Account/ForgotPassword` | — | JSON `{ email }` | `200 { message }` (однакова відповідь незалежно від наявності email) |
+| POST | `/api/Account/ResetPassword` | — | JSON `{ email, code, newPassword }` | `200 { message }` / `400 { error }` |
 | GET | `/images/{file}` | — | — | файл WebP |
 
 Відомі відхилення: `erroor` (помилка в назві ключа при реєстрації); `Register` використовується і для збереження профілю з `profile.tsx`.
@@ -251,7 +276,7 @@ API має ще одне вихідне з'єднання: SMTP-сервер `sm
 | 5 | **Hardcoded base URL** | `login.tsx`, `register.tsx`, `profile.tsx` | Зміна хоста вимагає правок у трьох місцях | Винести в `app.config.ts` / `EXPO_PUBLIC_API_URL` |
 | 6 | **Swagger увімкнений у продакшені** | `Program.cs` | Розкриває повний контракт API | Вмикати лише в Development |
 | 7 | **Немає CORS, HTTPS-редіректу; `RequireHttpsMetadata = false`** | `Program.cs` | Веб-клієнт (`react-native-web`) не працюватиме з іншого origin; JWT може йти по HTTP | Явна CORS-політика; `RequireHttpsMetadata = true` за TLS |
-| 8 | **Токен не відкликається** | JWT 7 днів без refresh/blacklist | Викрадений токен валідний тиждень | Коротший термін + refresh-токени, або оновлення `SecurityStamp` при logout |
+| 8 | **Токен не відкликається** | JWT 7 днів без refresh/blacklist. Після `ResetPassword` старі токени також лишаються дійсними, бо `JwtBearer` не перевіряє security stamp | Викрадений токен валідний тиждень | Коротший термін + refresh-токени; перевіряти `SecurityStamp` у `OnTokenValidated` |
 | 9 | **Відсутні тести** | обидва проєкти | Регресії не ловляться | Jest + React Native Testing Library; xUnit + `WebApplicationFactory` |
 | 10 | **Лінт не налаштований** | `app/` | `npm run lint` не працює коректно | Додати ESLint (`eslint-config-expo`) |
 | 11 | **Нестабільний `useEffect` у кореневому layout** | `src/app/_layout.tsx` | Без масиву залежностей, виконується при кожному рендері; `initStore` викликається повторно | Додати `[]` |
@@ -263,7 +288,12 @@ API має ще одне вихідне з'єднання: SMTP-сервер `sm
 | 17 | **Дубльовані `StyleSheet`/класи та імпорти** | `login.tsx`, `register.tsx`, `profile.tsx` | Копіпаст, важко змінювати | Винести спільні компоненти форм |
 | 18 | **Немає версіонування API і обробки помилок** | API | Зміна контракту ламає клієнт без попередження | Уніфікований формат помилок (ProblemDetails) |
 | 19 | **Зайва кома в `Smtp:UserName`** | `appsettings.json` (`"super.novakvova@ukr.net,"`) | Автентифікація SMTP не пройде, помилка виявиться лише під час відправки | Прибрати кому в кінці рядка |
-| 20 | **Неповна SMTP-конфігурація** | `appsettings.json` (`Smtp`) | Немає `FromEmail`, `EnableSsl`, `FromName`. Режим TLS не задано явно, тому код відправки мусить сам вирішити, як підключатися до порту 2525 | Додати відсутні поля або зафіксувати режим TLS у коді |
+| 20 | **SSL-режим SMTP зашитий у коді** | `EmailService.SendAsync` (`ConnectAsync(host, port, true)`) | SSL з початку з'єднання для будь-якого порту. Для 2525 (зазвичай STARTTLS) це може не спрацювати. Поля `EnableSsl` і `FromName` у конфігу відсутні | Вибирати режим за портом або з конфігу; перевірити з ukr.net |
+| 21 | **Немає обмеження спроб коду відновлення** (висока) | `AccountController.ResetPassword` | Код із 6 цифр (близько мільйона варіантів). Без ліміту спроб його можна підібрати | Лічильник невдалих спроб (`AccessFailedAsync`) або rate limiting |
+| 22 | **Немає обмеження частоти `ForgotPassword`** | `AccountController.ForgotPassword` | Будь-хто може надсилати листи на довільні адреси (спам, навантаження на SMTP) | `AddRateLimiter` по IP і по email |
+| 23 | **Помилка SMTP ковтається** | `ForgotPassword` (`catch` з логом) | Клієнт отримує 200, навіть якщо лист не відправлено. Видно лише в логах | Черга відправки з повтором або моніторинг логів |
+| 24 | **Ім'я відправника захардкоджене** | `EmailService.SendAsync` (`"Група p34"`) | Не береться з конфігу | Перенести в `Smtp:FromName` |
+| 25 | **Шлях до шаблону залежить від робочої папки** | `EmailService.SendPasswordResetCodeAsync` (`Directory.GetCurrentDirectory()`) | Запуск з іншої папки дасть `FileNotFoundException` | Використовувати `IWebHostEnvironment.ContentRootPath` |
 
 ---
 
@@ -295,4 +325,5 @@ build_and_push.bat
 3. Цільові платформи: лише iOS/Android, чи також веб (`web.output: "server"` вказує на SSR-експеримент)?
 4. Де має жити сховище зображень у продакшені: локальний volume чи зовнішнє (S3/Blob)?
 5. Чи є план прибрати `AndroidApp/` з репозиторію?
-6. Для чого потрібна пошта: підтвердження реєстрації, скидання пароля чи сповіщення? Від якої адреси слати листи і через яку бібліотеку (`MailKit` чи `System.Net.Mail`)?
+6. Який SSL/STARTTLS-режим використовувати для порту 2525 на ukr.net і чи звідси братиме адресу відправника `Smtp:UserName`, чи окремий `FromEmail`?
+7. Чи потрібні ліміти спроб для коду відновлення та для `ForgotPassword` (ризики #21, #22)?
