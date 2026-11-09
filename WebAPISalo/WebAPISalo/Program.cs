@@ -1,9 +1,19 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
 using WebAPISalo.Constants;
 using WebAPISalo.Data;
 using WebAPISalo.Data.Identity;
+using WebAPISalo.Hubs;
+using WebAPISalo.Interfaces;
+using WebAPISalo.Models.Account;
+using WebAPISalo.Models.Settings;
+using WebAPISalo.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,17 +34,115 @@ builder.Services.AddIdentity<UserEntity, RoleEntity>(opt =>
     .AddEntityFrameworkStores<MyDbContext>()
     .AddDefaultTokenProviders();
 
+builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
+
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()
+            .SetIsOriginAllowed(_ => true);
+    });
+});
+
+
 builder.Services.AddControllers();
 
-builder.Services.AddSwaggerGen();
+builder.Services.AddSignalR();
+
+var assemblyName = typeof(LoginModel).Assembly.GetName().Name;
+
+builder.Services.AddSwaggerGen(opt =>
+{
+    var fileDoc = $"{assemblyName}.xml";
+    var filePath = Path.Combine(AppContext.BaseDirectory, fileDoc);
+    opt.IncludeXmlComments(filePath);
+
+    opt.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer"
+    });
+
+    opt.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type=ReferenceType.SecurityScheme,
+                    Id="Bearer"
+                }
+            },
+            new string[]{}
+        }
+    });
+
+});
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        ValidateIssuerSigningKey = true,
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero,
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["JWT:Key"]!))
+    };
+
+});
 
 var app = builder.Build();
+
+app.UseCors();
+
+app.MapHub<ChatHub>("/chat");
+
+try
+{
+    var myImage = builder.Configuration.GetRequiredSection("ImagesDir").Get<string>() ?? "myimages";
+    string path = Path.Combine(Directory.GetCurrentDirectory(), myImage);
+    Directory.CreateDirectory(path); //автоматично стоврить images
+
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(path),
+        RequestPath = $"/{myImage}"
+    });
+}
+catch (Exception ex)
+{
+    Console.WriteLine("Помилка запуску" + ex.Message);
+}
 
 // Configure the HTTP request pipeline.
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

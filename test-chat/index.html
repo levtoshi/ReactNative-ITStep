@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Приклад чату</title>
+</head>
+<body>
+    <h1>Приклад чату</h1>
+    <div id="inputForm">
+        <input type="text" id="messageInput" placeholder="Введіть повідомлення...">
+        <button id="sendButton">Відправити</button>
+    </div>
+
+    <div id="messagesList"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/10.0.11/signalr.min.js" integrity="sha512-zV6tEyYm1c6KHVZUHmZUDIM/mWFZ5nHt08kt682k98cvUMAHTyJ0ZQkv2Q+KWIbbwN0wnboWYEvqbOztWwlMpg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <script>
+        const hubConnection = new signalR.HubConnectionBuilder()
+            .withUrl("https://salo.itstep.click/chat")
+            .withAutomaticReconnect()
+            .build();
+        hubConnection.on("Send",function(data){
+            const elem = document.createElement("p");
+            elem.appendChild(document.createTextNode(data));
+            const firstElem = document.getElementById("messagesList").firstChild;
+            document.getElementById("messagesList").insertBefore(elem, firstElem);
+        });
+        document.getElementById("sendButton").addEventListener("click", function(){
+            const message = document.getElementById("messageInput").value;
+            hubConnection.invoke("Send", message);
+            document.getElementById("messageInput").value = "";
+        });
+        hubConnection.start();
+    </script>
+</body>
+</html>

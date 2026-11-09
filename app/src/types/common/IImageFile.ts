@@ -1,5 +1,5 @@
 export interface IImageFile {
-    url: string;
+    uri: string;
     name: string;
     type: string;
 }

@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -15,11 +15,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from "expo-router";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import axios from "axios";
 import { IRegisterType } from "@/types/auth/IRegisterType";
 import { RegisterSchema } from "@/schemas/RegisterSchema";
 import * as ImagePicker from "expo-image-picker";
 import {ImagePickerButton} from "@/components/form/ImagePickerButton"
+import * as SecureStore from "expo-secure-store";
+import {loginSuccess} from "@/store/reducers/AuthSlice";
+import {useAppDispatch} from "@/store";
+import {useRegisterMutation} from "@/api/apiSlice";
+import {getApiError} from "@/api/apiErrors";
 
 // Якщо в полі помилка валідації — рамка і фон червоні
 const inputClass = (hasError: boolean) =>
@@ -54,6 +58,12 @@ const RegisterScreen = () => {
 
     const image = watch("imageFile");
 
+    // registerUser — відправляє POST /api/Account/Register (дані + фото як multipart/form-data)
+    const [registerUser] = useRegisterMutation();
+    // Текст помилки від сервера (напр. «Користувач уже існує»)
+    const [serverError, setServerError] = useState<string | null>(null);
+    const dispatch = useAppDispatch();
+
     // Відкриває галерею, і вибране фото записується в поле форми imageFile
     const pickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -68,22 +78,23 @@ const RegisterScreen = () => {
 
         const asset = result.assets[0];
         setValue("imageFile", {
-            url: asset.uri,
+            uri: asset.uri,
             name: asset.fileName ?? "photo.jpg",
             type: asset.mimeType ?? "image/jpeg",
         });
     };
 
-    const url = "https://salo.itstep.click/api/Account/Register";
-
+    // Викликається після натиску «Реєстрація», лише якщо дані пройшли валідацію
     const myOnSubmit = async (data: IRegisterType) => {
+        setServerError(null);
         try {
-            const result = await axios.post(url, data);
-            console.log("Успіх status", result.status);
-            console.log("Успіх data", result.data);
-            router.replace("/login");
+            // Сервер одразу повертає токен, тому окремо входити після реєстрації не треба
+            const {token} = await registerUser(data).unwrap();
+            await SecureStore.setItemAsync("token", token);
+            dispatch(loginSuccess(token)); // логінимо користувача в системі
+            router.replace("/profile");    // і переходимо на профіль
         } catch (error) {
-            console.log("Помилка", error);
+            setServerError(getApiError(error).message ?? "Не вдалося створити акаунт. Спробуйте ще раз.");
         }
     };
 
@@ -115,7 +126,7 @@ const RegisterScreen = () => {
                             {/* Фото: до вибору — значок камери, після — саме фото в колі */}
                             <View className="mb-6 items-center">
                                 <ImagePickerButton
-                                    imageUri={image?.url ?? null}
+                                    imageUri={image?.uri ?? null}
                                     onPress={pickImage}
                                 />
                                 <Text className="mt-2 text-sm text-slate-500">
@@ -237,7 +248,7 @@ const RegisterScreen = () => {
                                             autoComplete="new-password"
                                             textContentType="newPassword"
                                             returnKeyType="done"
-                                            onSubmitEditing={handleSubmit(myOnSubmit)}
+                                            onSubmitEditing={() => handleSubmit(myOnSubmit)()}
                                         />
                                     )}
                                 />
@@ -246,10 +257,15 @@ const RegisterScreen = () => {
                                 )}
                             </View>
 
+                            {/* Помилка від сервера (напр. така пошта вже зареєстрована) */}
+                            {serverError && (
+                                <Text className="mb-4 text-sm text-red-500">{serverError}</Text>
+                            )}
+
                             <Pressable
-                                onPress={handleSubmit(myOnSubmit)}
+                                onPress={() => handleSubmit(myOnSubmit)()}
                                 disabled={isSubmitting}
-                                className="h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700"
+                                className={`h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700 ${isSubmitting ? "opacity-60" : ""}`}
                             >
                                 <Text className="text-base font-semibold text-white">
                                     Реєстрація

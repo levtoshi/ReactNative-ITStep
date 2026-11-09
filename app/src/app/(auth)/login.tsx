@@ -1,5 +1,6 @@
 // useRef — хук для створення посилання (ref) на елемент, напр. на поле вводу
-import { useRef } from 'react';
+// useState — хук для збереження стану компонента (тут — текст помилки входу)
+import { useRef, useState } from 'react';
 // Базові компоненти React Native
 import {
     View,                       // контейнер (аналог div)
@@ -24,13 +25,30 @@ import {Controller, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 // Правила валідації: коректна пошта і пароль від 6 символів
 import {LoginSchema} from "@/schemas/LoginSchema";
-// axios — бібліотека для HTTP-запитів на сервер
-import axios from "axios";
+// SecureStore — захищене сховище на телефоні (тут зберігаємо JWT-токен, щоб користувач лишався у системі)
+import * as SecureStore from 'expo-secure-store';
+// useAppDispatch — типізований хук Redux, щоб надсилати команди (actions) у store
+import {useAppDispatch} from "@/store";
+// loginSuccess — action, який розбирає токен і записує користувача в Redux
+import {loginSuccess} from "@/store/reducers/AuthSlice";
+// useLoginMutation — RTK Query-хук, що відправляє POST /api/Account/Login (замість прямого axios)
+import {useLoginMutation} from "@/api/apiSlice";
+// getApiError — дістає статус і текст помилки з відповіді сервера
+import {getApiError} from "@/api/apiErrors";
 
 // Компонент екрана входу
 const LoginScreen = () => {
     // Посилання на поле пароля — через нього можна програмно поставити фокус на це поле
     const passwordRef = useRef(null);
+
+    // Текст помилки, яку повернув сервер (напр. «Дані вказано не вірно!»). null — помилки немає
+    const [loginError, setLoginError] = useState<string | null>(null);
+
+    // loginUser — функція, яка надсилає запит входу; isLoading — true, поки запит виконується
+    const [loginUser, {isLoading}] = useLoginMutation();
+
+    // Може посилати команди у Redux
+    const dispatch = useAppDispatch();
 
     // Початкові значення полів форми
     const defaultValue: ILoginType = {
@@ -51,25 +69,31 @@ const LoginScreen = () => {
         defaultValues: defaultValue
     });
 
-    // Адреса методу входу на сервері (AccountController.Login)
-    const url = "https://salo.itstep.click/api/Account/Login";
-
     // Викликається після натиску «Увійти», лише якщо дані пройшли валідацію
     const myOnSubmit = async (data: ILoginType) => {
+        // Перед новою спробою ховаємо стару помилку
+        setLoginError(null);
 
         try {
-            // Надсилаємо { email, password } на сервер POST-запитом
-            const result = await axios.post(url, data);
-            console.log("Усіх status", result.status); // код відповіді, напр. 200
-            console.log("Усіх data", result.data);     // тіло відповіді, напр. { token: "..." }
+            // Надсилаємо { email, password } на сервер; unwrap() кидає помилку, якщо сервер відповів не 2xx
+            const {token} = await loginUser(data).unwrap();
+            // Зберігаємо токен у захищеному сховищі, щоб при наступному запуску додатка користувач вже був у системі
+            await SecureStore.setItemAsync("token", token);
+            // Логінимо користувача в Redux: з токена дістаються email, ім'я, фото і ролі
+            dispatch(loginSuccess(token));
+            // Переходимо на профіль; replace — щоб кнопкою «Назад» не повернутися на форму входу
+            router.replace("/profile");
         }
         catch (error) {
-            // Сюди потрапляємо при невірних даних (401) або помилці мережі
-            console.log("Помилка", error);
+            // 400 і 401 — невірний логін або пароль; текст береться з відповіді сервера.
+            // Інші випадки (немає інтернету, сервер впав) — загальне повідомлення
+            const {status, message} = getApiError(error);
+            setLoginError(
+                status === 400 || status === 401
+                    ? message ?? "Невірний логін або пароль"
+                    : "Не вдалося увійти. Перевірте з'єднання і спробуйте ще раз."
+            );
         }
-
-        // Виводимо в консоль об'єкт з поштою і паролем (вимога таски 24.10)
-        console.log("Submit data ", data);
     }
 
 
@@ -189,12 +213,28 @@ const LoginScreen = () => {
                                 </View>
 
 
+                                {/* Помилка від сервера (невірний логін/пароль, немає зв'язку) — над кнопками */}
+                                {loginError && (
+                                    <Text className="mb-4 text-sm text-red-500">{loginError}</Text>
+                                )}
+
+                                {/* Посилання на відновлення пароля: відкриває екран forgot-password */}
+                                <TouchableOpacity
+                                    onPress={() => router.push("/forgot-password")}
+                                    className="mb-4 items-end"
+                                >
+                                    <Text className="text-sm font-medium text-indigo-600">
+                                        Забули пароль?
+                                    </Text>
+                                </TouchableOpacity>
+
                                 {/* Кнопка «Увійти»: handleSubmit перевіряє форму і при валідних даних викликає myOnSubmit.
+                                    disabled={isLoading} — поки йде запит, повторно натиснути не можна
                                     active:bg-indigo-700 — кнопка темнішає під час натискання */}
                                 <Pressable
-                                    onPress={handleSubmit(myOnSubmit)}
-                                    className="h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700"
-
+                                    onPress={() => handleSubmit(myOnSubmit)()}
+                                    disabled={isLoading}
+                                    className={`h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700 ${isLoading ? "opacity-60" : ""}`}
                                 >
                                     <Text className="text-base font-semibold text-white">
                                         Увійти

@@ -9,5 +9,11 @@ export const RegisterSchema = z
         email:
             z.email("Вкажіть правильно пошту"),
         password:
-            z.string().min(6, "Пароль має бути мін 6 символів")
+            z.string().min(6, "Пароль має бути мін 6 символів"),
+
+        imageFile: z.object({
+            uri: z.string(),
+            name: z.string(),
+            type: z.string(),
+        }).optional(),
     });
