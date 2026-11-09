@@ -9,6 +9,7 @@ using System.Text;
 using WebAPISalo.Constants;
 using WebAPISalo.Data;
 using WebAPISalo.Data.Identity;
+using WebAPISalo.Hubs;
 using WebAPISalo.Interfaces;
 using WebAPISalo.Models.Account;
 using WebAPISalo.Models.Settings;
@@ -40,6 +41,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("Smtp"));
 
 builder.Services.AddControllers();
+
+builder.Services.AddSignalR();
 
 var assemblyName = typeof(LoginModel).Assembly.GetName().Name;
 
@@ -99,6 +102,8 @@ builder.Services.AddAuthentication(options =>
 });
 
 var app = builder.Build();
+
+app.MapHub<ChatHub>("/chat");
 
 try
 {
