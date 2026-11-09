@@ -51,11 +51,11 @@ dotnet ef migrations add <Name> --project WebAPISalo/WebAPISalo   # EF Tools are
 - Routing is Expo Router, file-based under `app/src/app/`. Groups: `(auth)` (login, register), `(profile)` (profile). `index.tsx` redirects to `/profile` if a user is in Redux, otherwise to `/login`.
 - Session state: Redux Toolkit store in `src/store/index.ts`, one slice `auth` in `src/store/reducers/AuthSlice.ts`. The slice stores the decoded JWT claims plus the raw `token`.
 - Token persistence: `expo-secure-store` under the key `"token"`. The root `src/app/_layout.tsx` reads it on startup and dispatches `loginSuccess`. Login and logout write and clear the same key. The root layout's `useEffect` has no dependency array, so it re-runs on every render. Keep that in mind before adding logic there.
-- The base URL is `API_BASE_URL` in `src/api/config.ts` (`https://salo.itstep.click`). Login and register use RTK Query (`src/api/apiSlice.ts`); password recovery uses axios in `src/api/accountApi.ts`. `profile.tsx` still hardcodes `https://salo.itstep.click/api/...`; move it to `API_BASE_URL` when you touch that screen. There is no env-based config.
+- The base URL is `API_BASE_URL` in `src/api/config.ts` (`https://salo.itstep.click`). All auth endpoints (login, register, forgot and reset password) are RTK Query mutations in `src/api/apiSlice.ts`. `profile.tsx` still hardcodes `https://salo.itstep.click/api/...`; move it to `API_BASE_URL` when you touch that screen. There is no env-based config.
 - Auth requests: `src/api/baseQuery.ts` (`fetchBaseQuery`, adds `Authorization: Bearer` from `state.auth.user.token`). The `api` reducer and middleware are in `src/store/index.ts`. Use `getApiError` from `src/api/apiErrors.ts` to read the status and `error` text from RTK errors.
 - Forms use react-hook-form with zod schemas in `src/schemas/`, wired through `@hookform/resolvers/zod`. Styling is NativeWind (Tailwind classes via `className`); the global stylesheet is `src/global.css`.
 - `profile.tsx` posts to `/api/Account/Register` (not an update endpoint), because the backend has no profile-update endpoint.
-- Password recovery: `(auth)/forgot-password.tsx` → `(auth)/reset-password.tsx` (email passed as a route param). Both call `src/api/accountApi.ts`. `login.tsx` links to forgot-password and shows errors for statuses 400 and 401.
+- Password recovery: `(auth)/forgot-password.tsx` → `(auth)/reset-password.tsx` (email passed as a route param). Both use the RTK mutations from `src/api/apiSlice.ts`. `login.tsx` links to forgot-password and shows errors for statuses 400 and 401.
 
 ### Backend
 
@@ -104,7 +104,7 @@ dotnet ef migrations add <Name> --project WebAPISalo/WebAPISalo   # EF Tools are
 
 - Клієнт: екрани тільки в `src/app/`. Некомпонентний код (API, утиліти) — поза `src/app/`. Компоненти в `src/components/` не звертаються напряму до мережі.
 - Клієнт: стан сесії — тільки в Redux (`auth`). Не дублювати `user` або `token` у `useState` екрана.
-- Клієнт: нові HTTP-виклики має йти через один модуль з базовим URL (наприклад `src/api/`), а не через захардкоджений рядок у екрані. Логін і реєстрація вже йдуть через RTK Query (`src/api/apiSlice.ts`). `profile.tsx` ще робить прямий виклик; переписати його під час зміни, а не окремою задачею.
+- Клієнт: нові HTTP-виклики має йти через один модуль з базовим URL (наприклад `src/api/`), а не через захардкоджений рядок у екрані. Логін, реєстрація і відновлення пароля вже йдуть через RTK Query (`src/api/apiSlice.ts`). `profile.tsx` ще робить прямий виклик; переписати його під час зміни, а не окремою задачею.
 - Бекенд: шар `Controllers → Interfaces → Services → Data`. Логіку пишемо в сервісі, контролер тримаємо тонким. Поточний `AccountController` напряму використовує `UserManager`; для нових дій так само прийнятно, але бізнес-логіку в контролер не додавати.
 - Бекенд: зміна моделі Identity або `MyDbContext` — тільки разом з `dotnet ef migrations add`. Застосовані міграції не редагувати.
 - Зображення: завжди через `IImageService`. Не писати файли напряму з контролерів.

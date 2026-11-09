@@ -16,17 +16,16 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {router, useLocalSearchParams} from "expo-router";
 import {Controller, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
-import axios from "axios";
 import {ResetPasswordSchema} from "@/schemas/ResetPasswordSchema";
 import {IResetPasswordType} from "@/types/auth/IResetPasswordType";
-import {forgotPassword, resetPassword} from "@/api/accountApi";
-
-const getErrorMessage = (error: unknown, fallback: string): string =>
-    axios.isAxiosError<{ error?: string }>(error) ? error.response?.data?.error ?? fallback : fallback;
+import {useForgotPasswordMutation, useResetPasswordMutation} from "@/api/apiSlice";
+import {getApiError} from "@/api/apiErrors";
 
 const ResetPasswordScreen = () => {
     const params = useLocalSearchParams<{ email?: string }>();
     const [serverError, setServerError] = useState<string | null>(null);
+    const [resetPassword] = useResetPasswordMutation();
+    const [forgotPassword] = useForgotPasswordMutation();
 
     const {
         control,
@@ -41,19 +40,19 @@ const ResetPasswordScreen = () => {
     const onSubmit = async (data: IResetPasswordType) => {
         setServerError(null);
         try {
-            await resetPassword(data);
+            await resetPassword(data).unwrap();
             Alert.alert("Готово", "Пароль змінено. Увійдіть з новим паролем.", [
                 {text: "OK", onPress: () => router.replace("/login")},
             ]);
         } catch (error) {
-            setServerError(getErrorMessage(error, "Не вдалося змінити пароль. Спробуйте ще раз."));
+            setServerError(getApiError(error).message ?? "Не вдалося змінити пароль. Спробуйте ще раз.");
         }
     };
 
     const onResendCode = async () => {
         setServerError(null);
         try {
-            await forgotPassword({email: getValues("email")});
+            await forgotPassword({email: getValues("email")}).unwrap();
             Alert.alert("Готово", "Новий код надіслано на пошту.");
         } catch {
             setServerError("Не вдалося надіслати код повторно. Спробуйте пізніше.");

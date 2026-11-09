@@ -36,7 +36,7 @@ ReactNative-P34/
 │   │   └── explore.tsx       # Залишок шаблону Expo
 │   ├── src/store/            # Redux Toolkit: store + AuthSlice
 │   ├── src/schemas/          # zod-схеми форм (Login, Register, Profile, ForgotPassword, ResetPassword)
-│   ├── src/api/              # config.ts (API_BASE_URL), baseQuery.ts, apiSlice.ts (RTK Query: login, register), apiErrors.ts, accountApi.ts (axios: відновлення пароля)
+│   ├── src/api/              # config.ts (API_BASE_URL), baseQuery.ts, apiSlice.ts (RTK Query: login, register, forgotPassword, resetPassword), apiErrors.ts
 │   ├── src/types/            # TypeScript-інтерфейси (IUser, IAuthResponse, ...)
 │   ├── src/components/       # UI-компоненти (частина — шаблон Expo)
 │   ├── src/hooks/, constants/, global.css
@@ -135,7 +135,7 @@ ReactNative-P34/
 2. **Стан** — один Redux-слайс `auth` (`AuthSlice.ts`). Зберігає декодовані JWT-claims (`IUser`) разом із сирим `token`.
 3. **Персистентність** — токен у `expo-secure-store` під ключем `"token"`. Відновлення сесії — у кореневому `_layout.tsx` при старті (dispatch `loginSuccess`).
 4. **Форми** — react-hook-form з zod-валідацією (`src/schemas/`).
-5. **Мережа** — RTK Query (`src/api/apiSlice.ts`, endpoints `login` і `register`) на базовому запиті `src/api/baseQuery.ts`. Базовий запит додає `Authorization`, якщо користувач увійшов. Базова адреса — `API_BASE_URL` у `src/api/config.ts`. Відновлення пароля — axios у `src/api/accountApi.ts`. `profile.tsx` ще має прямий axios-виклик з URL.
+5. **Мережа** — RTK Query (`src/api/apiSlice.ts`, endpoints `login`, `register`, `forgotPassword`, `resetPassword`) на базовому запиті `src/api/baseQuery.ts`. Базовий запит додає `Authorization`, якщо користувач увійшов. Базова адреса — `API_BASE_URL` у `src/api/config.ts`. `profile.tsx` ще має прямий axios-виклик з URL.
 6. **Стилі** — NativeWind: класи Tailwind через `className`; кольори в основному `slate`/`indigo`.
 
 **Потік автентифікації:**

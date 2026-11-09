@@ -17,10 +17,11 @@ import {Controller, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {ForgotPasswordSchema} from "@/schemas/ForgotPasswordSchema";
 import {IForgotPasswordType} from "@/types/auth/IForgotPasswordType";
-import {forgotPassword} from "@/api/accountApi";
+import {useForgotPasswordMutation} from "@/api/apiSlice";
 
 const ForgotPasswordScreen = () => {
     const [serverError, setServerError] = useState<string | null>(null);
+    const [forgotPassword] = useForgotPasswordMutation();
 
     const {
         control,
@@ -34,7 +35,7 @@ const ForgotPasswordScreen = () => {
     const onSubmit = async (data: IForgotPasswordType) => {
         setServerError(null);
         try {
-            await forgotPassword(data);
+            await forgotPassword(data).unwrap();
             router.push({pathname: "/reset-password", params: {email: data.email}});
         } catch {
             setServerError("Не вдалося надіслати код. Перевірте з'єднання і спробуйте ще раз.");
