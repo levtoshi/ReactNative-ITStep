@@ -33,6 +33,7 @@ ReactNative-P34/
 │   │   ├── index.tsx         # Редірект: /profile або /login
 │   │   ├── (auth)/login.tsx, register.tsx, forgot-password.tsx, reset-password.tsx
 │   │   ├── (profile)/profile.tsx, _layout.tsx
+│   │   ├── mychat.tsx        # Чат через SignalR (хаб /chat)
 │   │   └── explore.tsx       # Залишок шаблону Expo
 │   ├── src/store/            # Redux Toolkit: store + AuthSlice
 │   ├── src/schemas/          # zod-схеми форм (Login, Register, Profile, ForgotPassword, ResetPassword)
@@ -49,6 +50,7 @@ ReactNative-P34/
 │   └── WebAPISalo/
 │       ├── Program.cs        # Композиція DI, JWT, Swagger, статика, seed
 │       ├── Controllers/      # AccountController (+ WeatherForecast — шаблон)
+│       ├── Hubs/             # ChatHub: Send(string) розсилає повідомлення всім клієнтам
 │       ├── Services/         # ImageService, JwtTokenService, EmailService
 │       ├── Interfaces/       # IImageService, IJwtTokenService, IEmailService
 │       ├── Data/             # MyDbContext, Identity-сутності
@@ -66,6 +68,8 @@ ReactNative-P34/
 ├── CLAUDE.md                 # Інструкції для Claude Code
 └── spec.md                   # Цей файл
 ```
+
+`test-chat/` (у корені репозиторію) містить лише `index.html` — статичний приклад чату на SignalR. Клієнт чату в застосунку — `app/src/app/mychat.tsx`.
 
 Зауваження: батьківська директорія `40.ReactNative P34/` містить `HomeWork*.txt` та інші навчальні файли, які не належать до проєкту.
 
@@ -89,6 +93,7 @@ ReactNative-P34/
 | Збереження токена | expo-secure-store | `^15.0.8` |
 | Вибір фото | expo-image-picker | `^17.0.10` |
 | Multipart | object-to-formdata | `^5.0.0` |
+| Чат (реального часу) | @microsoft/signalr | `^10.0.11` |
 | Анімації/жести | react-native-reanimated, react-native-gesture-handler, react-native-worklets | `^4.7.1`, `~3.3.0`, `0.13.0` |
 | Веб-таргет | react-native-web, react-dom | `~0.21.4`, `19.3.0` (`web.output: "server"`) |
 | Мова | TypeScript (strict) | `~6.0.3` |
@@ -155,6 +160,8 @@ Logout:    profile.tsx → SecureStore.delete("token") → dispatch(logout) → 
 
 **Відновлення пароля (клієнт):** `login.tsx` → посилання «Забули пароль?» → `forgot-password.tsx` → `reset-password.tsx` (email передається параметром маршруту). `login.tsx` показує помилку для статусів 400 і 401. Текст береться з поля `error` відповіді.
 
+**Чат (клієнт):** `app/src/app/mychat.tsx`, маршрут `/mychat`. Підключається до `CHAT_HUB_URL` (`src/api/config.ts`), слухає подію `Send`, викликає `Send`. Стан з'єднання показується в шапці (`connecting`, `connected`, `disconnected`). Повідомлення відображаються від нових до старих у `FlatList` з `inverted`.
+
 ### 4.2 Бекенд
 
 **Шари:**
@@ -165,6 +172,7 @@ Logout:    profile.tsx → SecureStore.delete("token") → dispatch(logout) → 
 4. **Персистентність** — `MyDbContext : IdentityDbContext<…, long, …>` з PostgreSQL. Міграції застосовуються при старті.
 5. **Статика** — `images/` віддається за `/images` через `UseStaticFiles`.
 6. **Документація** — Swagger з Bearer-схемою, XML-коментарі (`GenerateDocumentationFile`).
+7. **Хаб** — `ChatHub` (SignalR), `MapHub<ChatHub>("/chat")`. Метод `Send(string message)` розсилає повідомлення через подію `Send` усім підключеним клієнтам. Автентифікації немає, повідомлення не зберігаються.
 
 **Конвеєр запиту:** `UseSwagger/UseSwaggerUI` → `UseAuthentication` → `UseAuthorization` → `MapControllers`. Статика підключається до цього конвеєра раніше.
 
@@ -265,6 +273,7 @@ API має ще одне вихідне з'єднання: SMTP-сервер `sm
 | POST | `/api/Account/ForgotPassword` | — | JSON `{ email }` | `200 { message }` (однакова відповідь незалежно від наявності email) |
 | POST | `/api/Account/ResetPassword` | — | JSON `{ email, code, newPassword }` | `200 { message }` / `400 { error }` |
 | GET | `/images/{file}` | — | — | файл WebP |
+| SignalR | `/chat` | — | виклик `Send(string)`, подія `Send(string)` | повідомлення розсилаються всім клієнтам |
 
 Відомі відхилення: `erroor` (помилка в назві ключа при реєстрації); `Register` використовується і для збереження профілю з `profile.tsx`; `Login` повертає 401 для невірних даних, а клієнт обробляє і 400, і 401.
 
@@ -301,6 +310,7 @@ API має ще одне вихідне з'єднання: SMTP-сервер `sm
 | 23 | **Помилка SMTP ковтається** | `ForgotPassword` (`catch` з логом) | Клієнт отримує 200, навіть якщо лист не відправлено. Видно лише в логах | Черга відправки з повтором або моніторинг логів |
 | 24 | **Ім'я відправника захардкоджене** | `EmailService.SendAsync` (`"Група p34"`) | Не береться з конфігу | Перенести в `Smtp:FromName` |
 | 25 | **Шлях до шаблону залежить від робочої папки** | `EmailService.SendPasswordResetCodeAsync` (`Directory.GetCurrentDirectory()`) | Запуск з іншої папки дасть `FileNotFoundException` | Використовувати `IWebHostEnvironment.ContentRootPath` |
+| 26 | **Чат без автентифікації і без збереження** | `ChatHub.Send` | Будь-хто може писати в чат і читати його. Історія не зберігається, повідомлення без відправника | `[Authorize]` на хабі з JWT; таблиця повідомлень з `UserId` |
 
 ---
 
