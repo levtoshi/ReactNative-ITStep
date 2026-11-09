@@ -70,7 +70,6 @@ const LoginScreen = () => {
             }
             console.log("Помилка", error);
         }
-
         console.log("Submit data ", data);
     }
 
