@@ -16,15 +16,16 @@ import {ILoginType} from "@/types/auth/ILoginType";
 import {Controller, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {LoginSchema} from "@/schemas/LoginSchema";
-import axios from "axios";
-import {IAuthResponse} from "@/types/auth/IAuthResponse";
 import * as SecureStore from 'expo-secure-store';
 import {useAppDispatch} from "@/store";
 import {loginSuccess} from "@/store/reducers/AuthSlice";
+import {useLoginMutation} from "@/api/apiSlice";
+import {getApiError} from "@/api/apiErrors";
 
 const LoginScreen = () => {
     const passwordRef = useRef(null);
     const [loginError, setLoginError] = useState<string | null>(null);
+    const [loginUser, {isLoading}] = useLoginMutation();
 
     const router = useRouter();
 
@@ -45,15 +46,11 @@ const LoginScreen = () => {
         defaultValues: defaultValue
     });
 
-    const url = "https://salo.itstep.click/api/Account/Login";
     const myOnSubmit = async (data: ILoginType) => {
         setLoginError(null);
 
         try {
-            const result =
-                await axios.post<IAuthResponse>(url, data);
-            // console.log("Усіх status", result.status);
-            const {token} = result.data;
+            const {token} = await loginUser(data).unwrap();
             await SecureStore.setItemAsync("token", token);
             dispatch(loginSuccess(token)); //тут ми логінимо у системі користувача
             router.push("/profile");
@@ -62,15 +59,13 @@ const LoginScreen = () => {
         }
         catch (error) {
             // 400 і 401 — невірний логін або пароль; текст береться з відповіді сервера
-            if (axios.isAxiosError<{ error?: string }>(error) &&
-                (error.response?.status === 400 || error.response?.status === 401)) {
-                setLoginError(error.response.data?.error ?? "Невірний логін або пароль");
-            } else {
-                setLoginError("Не вдалося увійти. Перевірте з'єднання і спробуйте ще раз.");
-            }
-            console.log("Помилка", error);
+            const {status, message} = getApiError(error);
+            setLoginError(
+                status === 400 || status === 401
+                    ? message ?? "Невірний логін або пароль"
+                    : "Не вдалося увійти. Перевірте з'єднання і спробуйте ще раз."
+            );
         }
-        console.log("Submit data ", data);
     }
 
 
@@ -168,6 +163,7 @@ const LoginScreen = () => {
 
                                 <Pressable
                                     onPress={()=>handleSubmit(myOnSubmit)()}
+                                    disabled={isLoading}
                                     className="h-14 mb-4 w-full items-center justify-center rounded-xl bg-indigo-600 active:bg-indigo-700"
 
                                 >

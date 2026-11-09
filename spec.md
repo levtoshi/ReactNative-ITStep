@@ -3,6 +3,8 @@
 Технічна специфікація проєкту: структура, стек, залежності, архітектура, ризики.
 Оновлювати при суттєвих змінах архітектури або стеку.
 
+Останнє оновлення: 2026-11-09.
+
 ---
 
 ## 1. Огляд
@@ -29,11 +31,12 @@ ReactNative-P34/
 │   ├── src/app/              # Expo Router (файлові маршрути)
 │   │   ├── _layout.tsx       # Кореневий layout: відновлення сесії, Redux Provider
 │   │   ├── index.tsx         # Редірект: /profile або /login
-│   │   ├── (auth)/login.tsx, register.tsx
+│   │   ├── (auth)/login.tsx, register.tsx, forgot-password.tsx, reset-password.tsx
 │   │   ├── (profile)/profile.tsx, _layout.tsx
 │   │   └── explore.tsx       # Залишок шаблону Expo
 │   ├── src/store/            # Redux Toolkit: store + AuthSlice
-│   ├── src/schemas/          # zod-схеми форм (Login, Register, Profile)
+│   ├── src/schemas/          # zod-схеми форм (Login, Register, Profile, ForgotPassword, ResetPassword)
+│   ├── src/api/              # config.ts (API_BASE_URL), baseQuery.ts, apiSlice.ts (RTK Query: login, register), apiErrors.ts, accountApi.ts (axios: відновлення пароля)
 │   ├── src/types/            # TypeScript-інтерфейси (IUser, IAuthResponse, ...)
 │   ├── src/components/       # UI-компоненти (частина — шаблон Expo)
 │   ├── src/hooks/, constants/, global.css
@@ -132,7 +135,7 @@ ReactNative-P34/
 2. **Стан** — один Redux-слайс `auth` (`AuthSlice.ts`). Зберігає декодовані JWT-claims (`IUser`) разом із сирим `token`.
 3. **Персистентність** — токен у `expo-secure-store` під ключем `"token"`. Відновлення сесії — у кореневому `_layout.tsx` при старті (dispatch `loginSuccess`).
 4. **Форми** — react-hook-form з zod-валідацією (`src/schemas/`).
-5. **Мережа** — axios, прямі виклики з екранів (без сервісного шару і без централізованого інстансу axios).
+5. **Мережа** — RTK Query (`src/api/apiSlice.ts`, endpoints `login` і `register`) на базовому запиті `src/api/baseQuery.ts`. Базовий запит додає `Authorization`, якщо користувач увійшов. Базова адреса — `API_BASE_URL` у `src/api/config.ts`. Відновлення пароля — axios у `src/api/accountApi.ts`. `profile.tsx` ще має прямий axios-виклик з URL.
 6. **Стилі** — NativeWind: класи Tailwind через `className`; кольори в основному `slate`/`indigo`.
 
 **Потік автентифікації:**
@@ -150,11 +153,13 @@ Logout:    profile.tsx → SecureStore.delete("token") → dispatch(logout) → 
 
 **Модель клієнта:** `IUser { email, name, roles[], image, exp, token }`. Поля беруться з claims JWT (`email`, `name`, `roles`, `image`, `exp`).
 
+**Відновлення пароля (клієнт):** `login.tsx` → посилання «Забули пароль?» → `forgot-password.tsx` → `reset-password.tsx` (email передається параметром маршруту). `login.tsx` показує помилку для статусів 400 і 401. Текст береться з поля `error` відповіді.
+
 ### 4.2 Бекенд
 
 **Шари:**
 
-1. **Контролери** — `AccountController` з маршрутами `api/Account/{Login|Register|GetAll}`.
+1. **Контролери** — `AccountController` з маршрутами `api/Account/{Login|Register|GetAll|ForgotPassword|ResetPassword}`.
 2. **Сервіси** — `JwtTokenService` (видача токена), `ImageService` (обробка зображень), `EmailService` (SMTP через MailKit). Реєструються як `Scoped`, інтерфейси в `Interfaces/`. `SmtpSettings` прив'язується через `IOptions` у `Program.cs`.
 3. **Ідентичність** — `UserManager`/`RoleManager` ASP.NET Identity; сутності `UserEntity : IdentityUser<long>`, `RoleEntity`, `UserRoleEntity`.
 4. **Персистентність** — `MyDbContext : IdentityDbContext<…, long, …>` з PostgreSQL. Міграції застосовуються при старті.
@@ -201,6 +206,8 @@ Logout:    profile.tsx → SecureStore.delete("token") → dispatch(logout) → 
 | `appsettings.json` | `Jwt:Key`, `ConnectionStrings:DefaultConnection` (порожній), `ImagesDir`, `ImageSizes`, `Smtp:Host`, `Smtp:Port` (2525), `Smtp:UserName`, `Smtp:Password` |
 | Змінні середовища (Docker) | `ConnectionStrings__DefaultConnection`, `ASPNETCORE_ENVIRONMENT=Production` |
 | Рекомендовано для секретів | `Smtp__Password` і `Jwt__Key` як змінні середовища замість значень у файлі |
+| `salo.itstep.click/.env` | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `VOLUME_POSTGRES`, `VOLUME_SERVERAPI` |
+| Клієнт | Немає env-конфігурації. Базова адреса в `src/api/config.ts` (`API_BASE_URL`). `profile.tsx` ще має захардкоджений URL |
 
 ### 4.6 Відновлення пароля
 
@@ -221,9 +228,7 @@ POST /api/Account/ResetPassword { email, code, newPassword }
 
 - Код не зберігається в БД. Його генерує вбудований `EmailTokenProvider` ASP.NET Identity і прив'язує до security stamp та призначення `ResetPassword`.
 - Моделі: `ForgotPasswordModel`, `ResetPasswordModel` (валідація через DataAnnotations: 6 цифр, пароль мін 6 символів).
-- Клієнт (`app/`) ще не має екранів відновлення пароля.
-| `salo.itstep.click/.env` | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `VOLUME_POSTGRES`, `VOLUME_SERVERAPI` |
-| Клієнт | Немає env-конфігурації; URL API захардкоджено в трьох екранах |
+- Клієнт (`app/`) має екрани `forgot-password.tsx` і `reset-password.tsx`. Посилання «Забули пароль?» є на `login.tsx`.
 
 ---
 
@@ -244,7 +249,9 @@ POST /api/Account/ResetPassword { email, code, newPassword }
 
 Клієнт і API з'єднані лише контрактом HTTP. Спільного коду немає.
 
-API має ще одне вихідне з'єднання: SMTP-сервер `smtp.ukr.net`, порт 2525. Відправку виконує `EmailService` через MailKit. Контракт описаний у `AccountController`, `RegisterModel`, `LoginModel` і типах `app/src/types/`.
+API має ще одне вихідне з'єднання: SMTP-сервер `smtp.ukr.net`, порт 2525. Відправку виконує `EmailService` через MailKit.
+
+Контракт описаний у `AccountController`, `RegisterModel`, `LoginModel`, моделях відновлення пароля і типах `app/src/types/`.
 
 ---
 
@@ -259,7 +266,7 @@ API має ще одне вихідне з'єднання: SMTP-сервер `sm
 | POST | `/api/Account/ResetPassword` | — | JSON `{ email, code, newPassword }` | `200 { message }` / `400 { error }` |
 | GET | `/images/{file}` | — | — | файл WebP |
 
-Відомі відхилення: `erroor` (помилка в назві ключа при реєстрації); `Register` використовується і для збереження профілю з `profile.tsx`.
+Відомі відхилення: `erroor` (помилка в назві ключа при реєстрації); `Register` використовується і для збереження профілю з `profile.tsx`; `Login` повертає 401 для невірних даних, а клієнт обробляє і 400, і 401.
 
 ---
 
@@ -273,7 +280,7 @@ API має ще одне вихідне з'єднання: SMTP-сервер `sm
 | 2 | **`GetAll` доступний будь-якому автентифікованому користувачу** | `AccountController.GetAll` | Звичайний `User` бачить email і ПІБ усіх користувачів | Додати `[Authorize(Roles = Roles.Admin)]` |
 | 3 | **Відкриті тестові облікові дані в seed** | `Program.cs` (`Admin123`, `User123`) | Вхід в адмін-акаунт, якщо seed потрапив у продакшен-БД | Прибрати seed з Production або генерувати паролі |
 | 4 | **Збереження профілю через `/Register`** | `profile.tsx` | Немає оновлення профілю; запит створить нового користувача або поверне помилку | Додати `PUT /api/Account/Profile` (`[Authorize]`) |
-| 5 | **Hardcoded base URL** | `login.tsx`, `register.tsx`, `profile.tsx` | Зміна хоста вимагає правок у трьох місцях | Винести в `app.config.ts` / `EXPO_PUBLIC_API_URL` |
+| 5 | **Hardcoded base URL** | `profile.tsx` (свій URL); login, register і відновлення беруть адресу з `src/api/config.ts` | Зміна хоста вимагає правок у `config.ts` і в `profile.tsx` | Винести в `app.config.ts` / `EXPO_PUBLIC_API_URL` |
 | 6 | **Swagger увімкнений у продакшені** | `Program.cs` | Розкриває повний контракт API | Вмикати лише в Development |
 | 7 | **Немає CORS, HTTPS-редіректу; `RequireHttpsMetadata = false`** | `Program.cs` | Веб-клієнт (`react-native-web`) не працюватиме з іншого origin; JWT може йти по HTTP | Явна CORS-політика; `RequireHttpsMetadata = true` за TLS |
 | 8 | **Токен не відкликається** | JWT 7 днів без refresh/blacklist. Після `ResetPassword` старі токени також лишаються дійсними, бо `JwtBearer` не перевіряє security stamp | Викрадений токен валідний тиждень | Коротший термін + refresh-токени; перевіряти `SecurityStamp` у `OnTokenValidated` |
@@ -287,7 +294,7 @@ API має ще одне вихідне з'єднання: SMTP-сервер `sm
 | 16 | **Пароль і email у логах клієнта** | `console.log` у `login.tsx`, `profile.tsx` (`data`) | Персональні дані в логах | Прибрати логування даних форм |
 | 17 | **Дубльовані `StyleSheet`/класи та імпорти** | `login.tsx`, `register.tsx`, `profile.tsx` | Копіпаст, важко змінювати | Винести спільні компоненти форм |
 | 18 | **Немає версіонування API і обробки помилок** | API | Зміна контракту ламає клієнт без попередження | Уніфікований формат помилок (ProblemDetails) |
-| 19 | **Зайва кома в `Smtp:UserName`** | `appsettings.json` (`"super.novakvova@ukr.net,"`) | Автентифікація SMTP не пройде, помилка виявиться лише під час відправки | Прибрати кому в кінці рядка |
+| 19 | ~~Зайва кома в `Smtp:UserName`~~ (виправлено) | `appsettings.json` (`"super.novakvova@ukr.net,"`) | Кому прибрано, `UserName` тепер `super.novakvova@ukr.net` | Закрито |
 | 20 | **SSL-режим SMTP зашитий у коді** | `EmailService.SendAsync` (`ConnectAsync(host, port, true)`) | SSL з початку з'єднання для будь-якого порту. Для 2525 (зазвичай STARTTLS) це може не спрацювати. Поля `EnableSsl` і `FromName` у конфігу відсутні | Вибирати режим за портом або з конфігу; перевірити з ukr.net |
 | 21 | **Немає обмеження спроб коду відновлення** (висока) | `AccountController.ResetPassword` | Код із 6 цифр (близько мільйона варіантів). Без ліміту спроб його можна підібрати | Лічильник невдалих спроб (`AccessFailedAsync`) або rate limiting |
 | 22 | **Немає обмеження частоти `ForgotPassword`** | `AccountController.ForgotPassword` | Будь-хто може надсилати листи на довільні адреси (спам, навантаження на SMTP) | `AddRateLimiter` по IP і по email |

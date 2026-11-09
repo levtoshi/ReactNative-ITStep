@@ -1,4 +1,4 @@
-import {useRef} from 'react';
+import {useState} from 'react';
 import {
     View,
     Text,
@@ -15,16 +15,15 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {router} from "expo-router";
 import {Controller, useForm} from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
-import axios from "axios";
 import {IRegisterType} from "@/types/auth/IRegisterType";
 import {RegisterSchema} from "@/schemas/RegisterSchema";
 import * as ImagePicker from "expo-image-picker";
 import {ImagePickerButton} from "@/components/form/ImagePickerButton"
-import {serialize} from "object-to-formdata";
 import * as SecureStore from "expo-secure-store";
 import {loginSuccess, logout} from "@/store/reducers/AuthSlice";
 import {useAppDispatch} from "@/store";
-import {IAuthResponse} from "@/types/auth/IAuthResponse";
+import {useRegisterMutation} from "@/api/apiSlice";
+import {getApiError} from "@/api/apiErrors";
 
 const inputClass =
     "mb-2 h-14 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 focus:border-indigo-500 focus:bg-white";
@@ -50,6 +49,9 @@ const RegisterScreen = () => {
     });
 
     const image = watch("imageFile");
+
+    const [registerUser] = useRegisterMutation();
+    const [serverError, setServerError] = useState<string | null>(null);
 
     const pickImage = async () => {
         const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -78,27 +80,17 @@ const RegisterScreen = () => {
 
     }
 
-    const url = "https://salo.itstep.click/api/Account/Register";
-
     const dispatch = useAppDispatch();
 
     const myOnSubmit = async (data: IRegisterType) => {
+        setServerError(null);
         try {
-            console.log("Register user ", data);
-            const formData = serialize(data);
-            const result = await axios
-                .post<IAuthResponse>(url, formData,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                    }
-                });
-            const {token} = result.data;
+            const {token} = await registerUser(data).unwrap();
             await SecureStore.setItemAsync("token", token);
             dispatch(loginSuccess(token)); //тут ми логінимо у системі користувача
             router.push("/profile");
         } catch (error) {
-            console.log("Помилка", error);
+            setServerError(getApiError(error).message ?? "Не вдалося створити акаунт. Спробуйте ще раз.");
         }
     };
 
@@ -259,6 +251,10 @@ const RegisterScreen = () => {
                                     <Text className="mt-1 text-xs text-red-500">{errors.password.message}</Text>
                                 )}
                             </View>
+
+                            {serverError && (
+                                <Text className="mb-4 text-sm text-red-500">{serverError}</Text>
+                            )}
 
                             <Pressable
                                 onPress={() => handleSubmit(myOnSubmit)()}

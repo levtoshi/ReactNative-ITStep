@@ -1,8 +1,9 @@
 import axios from "axios";
+import {API_BASE_URL} from "@/api/config";
 import {IForgotPasswordType} from "@/types/auth/IForgotPasswordType";
 import {IResetPasswordType} from "@/types/auth/IResetPasswordType";
 
-const ACCOUNT_API_URL = "https://salo.itstep.click/api/Account";
+const ACCOUNT_API_URL = `${API_BASE_URL}/api/Account`;
 
 export interface IMessageResponse {
     message: string;
