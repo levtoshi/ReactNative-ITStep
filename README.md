@@ -39,4 +39,6 @@ claude
 /cost
 
 /model
+
+claude --resume d7f9c0dd-2e30-43de-8377-b60409718452
 ```
